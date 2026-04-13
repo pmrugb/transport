@@ -97,7 +97,7 @@ class VehicleController extends Controller
     private function sharedData(): array
     {
         return [
-            'transporters' => Operator::query()->select(['id', 'name'])->orderBy('name')->get(),
+            'transporters' => Operator::query()->select(['id', 'name', 'cnic'])->orderBy('name')->get(),
             'vehicleTypes' => VehicleType::query()->select(['id', 'name'])->orderBy('name')->get(),
             'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
             'statuses' => Vehicle::STATUSES,

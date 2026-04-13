@@ -9,7 +9,7 @@
             <select class="form-select @error('transporter_id') is-invalid @enderror" id="transporter_id" name="transporter_id" data-placeholder="Select transporter" required>
                 <option value="">Select transporter</option>
                 @foreach ($transporters as $transporter)
-                    <option value="{{ $transporter->id }}" @selected((string) old('transporter_id', $vehicle->transporter_id) === (string) $transporter->id)>{{ $transporter->name }}</option>
+                    <option value="{{ $transporter->id }}" @selected((string) old('transporter_id', $vehicle->transporter_id) === (string) $transporter->id)>{{ $transporter->name }}@if($transporter->cnic) - {{ $transporter->cnic }}@endif</option>
                 @endforeach
             </select>
             @error('transporter_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
