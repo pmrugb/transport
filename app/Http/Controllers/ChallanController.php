@@ -1,0 +1,168 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\StoreChallanRequest;
+use App\Models\Challan;
+use App\Models\District;
+use App\Models\TransportRoute;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
+
+class ChallanController extends Controller
+{
+    public function routeDetails(Request $request): JsonResponse
+    {
+        $route = TransportRoute::query()
+            ->findOrFail((int) $request->integer('route_id'));
+
+        return response()->json([
+            'starting_point' => $route->starting_point,
+            'ending_point' => $route->ending_point,
+            'district_id' => $route->district_id,
+        ]);
+    }
+
+    public function index(Request $request): View
+    {
+        $perPage = (int) $request->integer('per_page', 10);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+
+        return view('challans.index', [
+            ...$this->sharedData(),
+            'perPage' => $perPage,
+            'challans' => Challan::query()
+                ->with(['route', 'district'])
+                ->latest()
+                ->paginate($perPage)
+                ->withQueryString(),
+        ]);
+    }
+
+    public function create(): View
+    {
+        $this->ensureSuperadmin();
+
+        return view('challans.create', [
+            ...$this->sharedData(),
+            'challan' => new Challan([
+                'challan_date' => today(),
+            ]),
+            'formAction' => route('challans.store'),
+            'formMethod' => 'post',
+            'submitLabel' => 'Save Challan',
+        ]);
+    }
+
+    public function store(StoreChallanRequest $request): RedirectResponse
+    {
+        $this->ensureSuperadmin();
+
+        $payload = $request->validated();
+        $payload = $this->hydrateRouteSnapshot($payload);
+        $payload['challan_image'] = $this->storeUploadedImage($request, null);
+
+        Challan::create($payload);
+
+        return redirect()->route('challans.create')
+            ->with('success', 'Challan saved successfully.');
+    }
+
+    public function show(Challan $challan): View
+    {
+        $this->ensureSuperadmin();
+
+        return view('challans.show', [
+            ...$this->sharedData(),
+            'challan' => $challan->load(['route', 'district']),
+        ]);
+    }
+
+    public function edit(Challan $challan): View
+    {
+        $this->ensureSuperadmin();
+
+        return view('challans.edit', [
+            ...$this->sharedData(),
+            'challan' => $challan->load(['route', 'district']),
+            'formAction' => route('challans.update', $challan),
+            'formMethod' => 'put',
+            'submitLabel' => 'Save Changes',
+        ]);
+    }
+
+    public function update(StoreChallanRequest $request, Challan $challan): RedirectResponse
+    {
+        $this->ensureSuperadmin();
+
+        $payload = $request->validated();
+        $payload = $this->hydrateRouteSnapshot($payload);
+        $payload['challan_image'] = $this->storeUploadedImage($request, $challan) ?? $challan->challan_image;
+
+        $challan->update($payload);
+
+        return redirect()->route('challans.edit', $challan)
+            ->with('success', 'Challan updated successfully.');
+    }
+
+    public function destroy(Challan $challan): RedirectResponse
+    {
+        $this->ensureSuperadmin();
+
+        $challan->delete();
+
+        return redirect()->route('challans.index')
+            ->with('success', 'Challan deleted successfully.');
+    }
+
+    private function sharedData(): array
+    {
+        $routes = TransportRoute::query()
+            ->with('district')
+            ->orderBy('route_name')
+            ->get();
+
+        return [
+            'routes' => $routes,
+            'districts' => District::query()->orderBy('name')->get(),
+            'canManageChallans' => auth()->user()?->isSuperadmin() ?? false,
+            'stats' => [
+                'total' => Challan::count(),
+                'today' => Challan::query()->whereDate('challan_date', today())->count(),
+                'districts' => Challan::query()->distinct('district_id')->count('district_id'),
+            ],
+        ];
+    }
+
+    private function ensureSuperadmin(): void
+    {
+        abort_unless(auth()->user()?->isSuperadmin(), 403);
+    }
+
+    private function hydrateRouteSnapshot(array $payload): array
+    {
+        $route = TransportRoute::query()->findOrFail((int) $payload['route_id']);
+
+        $payload['starting_point'] = $route->starting_point;
+        $payload['ending_point'] = $route->ending_point;
+        $payload['district_id'] = $route->district_id;
+
+        return $payload;
+    }
+
+    private function storeUploadedImage(StoreChallanRequest $request, ?Challan $challan): ?string
+    {
+        if (! $request->hasFile('challan_image')) {
+            return null;
+        }
+
+        if ($challan?->challan_image) {
+            Storage::disk('public')->delete($challan->challan_image);
+        }
+
+        return $request->file('challan_image')->store('challans', 'public');
+    }
+}
