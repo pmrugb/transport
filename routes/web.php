@@ -13,6 +13,7 @@ use App\Http\Controllers\FareController;
 use App\Http\Controllers\GrantController;
 use App\Http\Controllers\GrantReleaseController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RootRedirectController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SecurityLogController;
@@ -44,6 +45,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/trips/create', [TripDetailController::class, 'create'])->name('trips.create');
     Route::get('/trips/vehicle-details', [TripDetailController::class, 'vehicleDetails'])->name('trips.vehicle-details');
     Route::get('/trips/route-details', [TripDetailController::class, 'routeDetails'])->name('trips.route-details');
+    Route::get('/trips/export/csv', [TripDetailController::class, 'exportCsv'])->name('trips.export.csv');
+    Route::get('/trips/export/excel', [TripDetailController::class, 'exportExcel'])->name('trips.export.excel');
+    Route::get('/trips/export/pdf-view', [TripDetailController::class, 'pdfView'])->name('trips.export.pdf-view');
     Route::post('/trips', [TripDetailController::class, 'store'])->name('trips.store');
     Route::get('/trips/{trip}', [TripDetailController::class, 'show'])->name('trips.show');
     Route::get('/trips/{trip}/edit', [TripDetailController::class, 'edit'])->name('trips.edit');
@@ -62,6 +66,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
     Route::patch('/payments/{payment}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
     Route::patch('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
+    Route::get('/reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
+    Route::get('/reports/export/pdf-view', [ReportController::class, 'pdfView'])->name('reports.export.pdf-view');
     Route::get('/challans', [ChallanController::class, 'index'])->name('challans.index');
     Route::get('/challans/create', [ChallanController::class, 'create'])->name('challans.create');
     Route::get('/challans/route-details', [ChallanController::class, 'routeDetails'])->name('challans.route-details');
@@ -73,6 +81,9 @@ Route::middleware('auth')->group(function (): void {
     Route::redirect('/operators', '/transporters');
     Route::get('/transporters', [OperatorController::class, 'index'])->name('transporters.index');
     Route::get('/transporters/create', [OperatorController::class, 'create'])->name('transporters.create');
+    Route::get('/transporters/export/csv', [OperatorController::class, 'exportCsv'])->name('transporters.export.csv');
+    Route::get('/transporters/export/excel', [OperatorController::class, 'exportExcel'])->name('transporters.export.excel');
+    Route::get('/transporters/export/pdf-view', [OperatorController::class, 'pdfView'])->name('transporters.export.pdf-view');
     Route::post('/transporters', [OperatorController::class, 'store'])->name('transporters.store');
     Route::get('/transporters/{operator}', [OperatorController::class, 'show'])->name('transporters.show');
     Route::get('/transporters/{operator}/edit', [OperatorController::class, 'edit'])->name('transporters.edit');
@@ -88,6 +99,9 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/routes/{transportRoute}', [TransportRouteController::class, 'destroy'])->name('routes.destroy');
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
+    Route::get('/vehicles/export/csv', [VehicleController::class, 'exportCsv'])->name('vehicles.export.csv');
+    Route::get('/vehicles/export/excel', [VehicleController::class, 'exportExcel'])->name('vehicles.export.excel');
+    Route::get('/vehicles/export/pdf-view', [VehicleController::class, 'pdfView'])->name('vehicles.export.pdf-view');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::get('/vehicles/types', [VehicleTypeController::class, 'index'])->name('vehicles.types.index');
     Route::post('/vehicles/types', [VehicleTypeController::class, 'store'])->name('vehicles.types.store');

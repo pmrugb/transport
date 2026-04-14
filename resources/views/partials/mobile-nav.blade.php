@@ -25,6 +25,13 @@
                             <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                            <span class="nav-link-icon"><i class="fa-solid fa-chart-column app-icon"></i></span>
+                            <span class="nav-link-text">Export Reports</span>
+                            <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
+                        </a>
+                    </li>
                     <li class="nav-item nav-item-group {{ request()->routeIs('trips.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('trips.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileTripsMenu" aria-expanded="{{ request()->routeIs('trips.*') ? 'true' : 'false' }}" aria-controls="mobileTripsMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-road-circle-check app-icon"></i></span>
@@ -43,6 +50,13 @@
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                             <span class="nav-link-icon"><i class="fa-solid fa-building-user app-icon"></i></span>
                             <span class="nav-link-text">NATCO Department Dashboard</span>
+                            <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                            <span class="nav-link-icon"><i class="fa-solid fa-chart-column app-icon"></i></span>
+                            <span class="nav-link-text">Export Reports</span>
                             <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                         </a>
                     </li>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsExcelExports;
 use App\Http\Requests\StoreTripDetailRequest;
 use App\Models\District;
 use App\Models\Fare;
@@ -14,10 +15,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
 class TripDetailController extends Controller
 {
+    use BuildsExcelExports;
+
     public function vehicleDetails(Request $request): JsonResponse
     {
         $vehicle = Vehicle::query()
@@ -69,48 +74,77 @@ class TripDetailController extends Controller
     public function index(Request $request): View
     {
         $perPage = $this->resolvePerPage($request);
-        $search = trim((string) $request->input('search', ''));
-        $tripQuery = TripDetail::query()
-            ->select([
-                'id',
-                'vehicle_id',
-                'route_id',
-                'transporter_id',
-                'driver_name',
-                'driver_mobile',
-                'district_id',
-                'fare_amount',
-                'total_amount',
-                'status',
-                'created_at',
-            ])
-            ->with([
-                'route:id,route_name',
-                'vehicle:id,registration_no',
-                'transporter:id,name',
-                'district:id,name',
-                'tripCost:id,trip_id',
-            ])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($nestedQuery) use ($search) {
-                    $nestedQuery
-                        ->where('driver_name', 'like', "%{$search}%")
-                        ->orWhere('driver_mobile', 'like', "%{$search}%")
-                        ->orWhereHas('vehicle', fn ($vehicleQuery) => $vehicleQuery->where('registration_no', 'like', "%{$search}%"))
-                        ->orWhereHas('route', fn ($routeQuery) => $routeQuery->where('route_name', 'like', "%{$search}%"))
-                        ->orWhereHas('transporter', fn ($transporterQuery) => $transporterQuery->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
-                });
-            })
-            ->latest();
+        $filters = $this->filterValues($request);
+        $tripQuery = $this->filteredTripsQuery($request);
 
         return view('trips.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'search' => $search,
+            'search' => $filters['search'],
+            'filters' => $filters,
+            'exportColumns' => $this->tripExportColumns(),
+            'selectedExportColumns' => $this->selectedTripExportColumns($request),
             'trips' => $tripQuery
                 ->paginate($this->paginationSize($perPage, (clone $tripQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
+        ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $columns = $this->selectedTripExportColumns($request);
+        $filename = 'trips-'.now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($request, $columns): void {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, array_values($columns));
+
+            foreach ($this->filteredTripsQuery($request)->cursor() as $trip) {
+                fputcsv($handle, array_values($this->tripExportRow($trip, $columns)));
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        $columns = $this->selectedTripExportColumns($request);
+        $rows = $this->filteredTripsQuery($request)
+            ->get()
+            ->map(fn (TripDetail $trip): array => $this->tripExportRow($trip, $columns))
+            ->all();
+        $filename = 'trips-'.now()->format('Ymd-His').'.xlsx';
+        $tempPath = tempnam(sys_get_temp_dir(), 'trips-xlsx-');
+
+        $this->buildExcelExport($tempPath, $rows, 'Trips', 'Trips Export');
+
+        return response()->download(
+            $tempPath,
+            $filename,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        )->deleteFileAfterSend(true);
+    }
+
+    public function pdfView(Request $request): View
+    {
+        $columns = $this->selectedTripExportColumns($request);
+        $rows = $this->filteredTripsQuery($request)
+            ->get()
+            ->map(fn (TripDetail $trip): array => $this->tripExportRow($trip, $columns))
+            ->all();
+
+        return view('exports.table-pdf', [
+            'title' => 'Trips Export',
+            'subtitle' => 'Filtered trip records with the selected export columns.',
+            'columns' => $columns,
+            'rows' => $rows,
+            'filters' => [
+                'Search' => $this->filterValues($request)['search'],
+            ],
         ]);
     }
 
@@ -277,5 +311,103 @@ class TripDetailController extends Controller
     private function ensureSuperadmin(): void
     {
         abort_unless(auth()->user()?->isSuperadmin(), 403);
+    }
+
+    private function filteredTripsQuery(Request $request)
+    {
+        $filters = $this->filterValues($request);
+
+        return TripDetail::query()
+            ->select([
+                'id',
+                'trip_date',
+                'vehicle_id',
+                'route_id',
+                'transporter_id',
+                'driver_name',
+                'driver_mobile',
+                'district_id',
+                'fare_amount',
+                'total_amount',
+                'status',
+                'created_at',
+            ])
+            ->with([
+                'route:id,route_name',
+                'vehicle:id,registration_no',
+                'transporter:id,name',
+                'district:id,name',
+                'tripCost:id,trip_id',
+            ])
+            ->when($filters['search'] !== '', function ($query) use ($filters) {
+                $search = $filters['search'];
+
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('driver_name', 'like', "%{$search}%")
+                        ->orWhere('driver_mobile', 'like', "%{$search}%")
+                        ->orWhereHas('vehicle', fn ($vehicleQuery) => $vehicleQuery->where('registration_no', 'like', "%{$search}%"))
+                        ->orWhereHas('route', fn ($routeQuery) => $routeQuery->where('route_name', 'like', "%{$search}%"))
+                        ->orWhereHas('transporter', fn ($transporterQuery) => $transporterQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest();
+    }
+
+    private function filterValues(Request $request): array
+    {
+        return [
+            'search' => trim((string) $request->input('search', '')),
+        ];
+    }
+
+    private function tripExportColumns(): array
+    {
+        return [
+            'trip_date' => 'Trip Date',
+            'vehicle' => 'Vehicle',
+            'route' => 'Route',
+            'transporter' => 'Transporter',
+            'driver_name' => 'Driver Name',
+            'driver_mobile' => 'Driver Mobile',
+            'district' => 'District',
+            'fare_amount' => 'Fare Amount',
+            'total_amount' => 'Total Amount',
+            'status' => 'Status',
+        ];
+    }
+
+    private function selectedTripExportColumns(Request $request): array
+    {
+        $available = $this->tripExportColumns();
+        $requested = array_values(array_filter((array) $request->input('columns', array_keys($available)), 'is_string'));
+        $selected = array_intersect_key($available, array_flip($requested));
+
+        return $selected !== [] ? $selected : $available;
+    }
+
+    private function tripExportRow(TripDetail $trip, array $columns): array
+    {
+        $row = [
+            'trip_date' => $trip->trip_date?->format('Y-m-d') ?: '',
+            'vehicle' => $trip->vehicle?->registration_no ?: '',
+            'route' => $trip->route?->route_name ?: '',
+            'transporter' => $trip->transporter?->name ?: '',
+            'driver_name' => $trip->driver_name ?: '',
+            'driver_mobile' => $trip->driver_mobile ?: '',
+            'district' => $trip->district?->name ?: '',
+            'fare_amount' => (float) $trip->fare_amount,
+            'total_amount' => (float) $trip->total_amount,
+            'status' => TripDetail::STATUSES[$trip->status] ?? ucfirst((string) $trip->status),
+        ];
+
+        $exportRow = [];
+
+        foreach ($columns as $key => $label) {
+            $exportRow[$label] = $row[$key] ?? '';
+        }
+
+        return $exportRow;
     }
 }

@@ -1,6 +1,33 @@
 @extends('layouts.app', ['title' => 'All Trips | Free Public Transport System', 'pageBadge' => 'Trip Management'])
 
 @section('content')
+    <style>
+        .export-columns-toggle {
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .export-columns-grid .form-check-input {
+            accent-color: #198754;
+        }
+
+        .export-columns-grid label {
+            width: 100%;
+            padding: 0.5rem 0.7rem;
+            border: 1px solid #d7e7dd;
+            border-radius: 0.7rem;
+            background: #f8fbf9;
+            font-size: 0.88rem;
+            line-height: 1.2;
+        }
+
+        .export-columns-grid .form-check-input:checked + span {
+            color: #146c43;
+            font-weight: 600;
+        }
+    </style>
+
     <div class="page-hero d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3">
         <div>
             <p class="page-eyebrow">Trip Management</p>
@@ -20,6 +47,43 @@
 
     <section class="row g-4 mt-2">
         <div class="col-12">
+            <div class="card section-card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="d-flex flex-column gap-3">
+                        <input type="hidden" name="search" value="{{ $filters['search'] }}">
+                        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                            <div>
+                                <h3 class="section-title mb-1">Export Trips</h3>
+                                <p class="section-copy mb-0">Download the current filtered trip list and toggle the columns you want included.</p>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-success" type="submit" formaction="{{ route('trips.export.csv') }}">
+                                    <i class="fa-regular fa-file-lines me-2"></i>CSV
+                                </button>
+                                <button class="btn btn-success" type="submit" formaction="{{ route('trips.export.excel') }}">
+                                    <i class="fa-regular fa-file-excel me-2"></i>Excel
+                                </button>
+                                <button class="btn btn-danger" type="submit" formaction="{{ route('trips.export.pdf-view') }}" formtarget="_blank">
+                                    <i class="fa-regular fa-file-pdf me-2"></i>PDF
+                                </button>
+                            </div>
+                        </div>
+                        <details>
+                            <summary class="export-columns-toggle">Choose Export Columns</summary>
+                            <div class="row g-2 mt-2 export-columns-grid">
+                                @foreach ($exportColumns as $key => $label)
+                                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                                        <label class="form-check-label d-flex align-items-center gap-2">
+                                            <input class="form-check-input mt-0" type="checkbox" name="columns[]" value="{{ $key }}" @checked(array_key_exists($key, $selectedExportColumns))>
+                                            <span>{{ $label }}</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    </form>
+                </div>
+            </div>
             <div class="card section-card table-card mb-4">
                 <div class="card-header">
                     <div class="table-toolbar align-items-start align-items-md-center">
