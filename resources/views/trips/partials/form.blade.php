@@ -4,6 +4,21 @@
         @method($formMethod)
     @endif
 
+    <style>
+        .is-half-trip-wrap {
+            margin: 0;
+            padding: 0.35rem 0 0;
+            justify-content: center;
+        }
+
+        .is-half-trip-wrap .form-check-input {
+            width: 1.15rem;
+            height: 1.15rem;
+            margin-top: 0;
+            margin-left: 0;
+        }
+    </style>
+
     <div class="row g-3">
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="trip_date">Trip Date <span class="text-danger">*</span></label>
@@ -23,10 +38,25 @@
             </select>
             @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <div class="col-md-4">
+        @php
+            $selectedFareId = old('fare_id', $trip->fare_id);
+            $selectedFare = $fares->firstWhere('id', $selectedFareId);
+            $initialHalfTrip = old('is_half_trip');
+            $isHalfTripChecked = $initialHalfTrip !== null
+                ? (bool) $initialHalfTrip
+                : ($selectedFare && (float) ($trip->fare_amount ?? 0) > 0 && abs((float) $trip->fare_amount - ((float) $selectedFare->amount / 2)) < 0.01);
+        @endphp
+        <div class="col-md-2">
             <label class="form-label fw-semibold" for="no_of_trips">No. of Trips <span class="text-danger">*</span></label>
             <input class="form-control @error('no_of_trips') is-invalid @enderror" id="no_of_trips" name="no_of_trips" type="number" min="1" step="1" value="{{ old('no_of_trips', $trip->no_of_trips ?? 1) }}" required>
             @error('no_of_trips')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold" for="is_half_trip">Half trip</label>
+            <div class="form-check is-half-trip-wrap">
+                <input class="form-check-input @error('is_half_trip') is-invalid @enderror" id="is_half_trip" name="is_half_trip" type="checkbox" value="1" @checked($isHalfTripChecked)>
+                @error('is_half_trip')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            </div>
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="route_id">Route <span class="text-danger">*</span></label>
@@ -90,7 +120,7 @@
             <select class="form-select @error('fare_id') is-invalid @enderror" id="fare_id" name="fare_id" data-placeholder="Select fare" required>
                 <option value="">Select fare</option>
                 @foreach ($fares as $fare)
-                    <option value="{{ $fare->id }}" @selected((string) old('fare_id', $trip->fare_id) === (string) $fare->id)>
+                    <option value="{{ $fare->id }}" data-amount="{{ number_format((float) $fare->amount, 2, '.', '') }}" @selected((string) old('fare_id', $trip->fare_id) === (string) $fare->id)>
                         {{ $fare->route?->route_name ?: 'Fare #'.$fare->id }} | {{ number_format((float) $fare->amount, 2) }}
                     </option>
                 @endforeach
@@ -152,12 +182,14 @@
             const fareAmountField = document.getElementById('fare_amount');
             const noOfTripsField = document.getElementById('no_of_trips');
             const totalAmountField = document.getElementById('total_amount');
+            const halfTripField = document.getElementById('is_half_trip');
             const driverNameField = document.getElementById('driver_name');
             const cnicField = document.getElementById('driver_cnic');
             const mobileField = document.getElementById('driver_mobile');
             const cnicRequiredMarker = document.getElementById('driver_cnic_required');
             const vehicleDetailsUrl = form.dataset.vehicleDetailsUrl;
             const routeDetailsUrl = form.dataset.routeDetailsUrl;
+            let baseFareAmount = Number(fareAmountField.value || 0);
 
             const setSelectValue = function (field, value) {
                 if (!field) {
@@ -273,15 +305,25 @@
             };
 
             const syncFareValues = function () {
-                if (!fareField.value || !fareAmountField.value) {
+                if (!fareField.value || !baseFareAmount) {
                     return;
                 }
 
-                const fareAmount = Number(fareAmountField.value || 0);
+                const fareAmount = halfTripField.checked ? (baseFareAmount / 2) : baseFareAmount;
                 const tripCount = Math.max(1, Number(noOfTripsField.value || 1));
 
+                fareAmountField.value = fareAmount.toFixed(2);
                 totalAmountField.value = (fareAmount * tripCount).toFixed(2);
                 totalAmountField.dataset.autoFilled = 'true';
+            };
+
+            const syncBaseFareFromSelectedFare = function () {
+                const selectedOption = fareField.options[fareField.selectedIndex];
+                const selectedAmount = selectedOption ? Number(selectedOption.dataset.amount || 0) : 0;
+
+                if (selectedAmount > 0) {
+                    baseFareAmount = selectedAmount;
+                }
             };
 
             const syncFromRoute = function () {
@@ -299,7 +341,7 @@
                     }
 
                     if (data.fare_amount !== null && data.fare_amount !== undefined) {
-                        fareAmountField.value = Number(data.fare_amount).toFixed(2);
+                        baseFareAmount = Number(data.fare_amount);
                     }
 
                     syncFareValues();
@@ -326,7 +368,7 @@
                     }
 
                     if (data.fare_amount !== null && data.fare_amount !== undefined) {
-                        fareAmountField.value = Number(data.fare_amount).toFixed(2);
+                        baseFareAmount = Number(data.fare_amount);
                     }
 
                     if (driverNameField) {
@@ -413,6 +455,7 @@
                 });
 
                 window.jQuery(fareField).on('change', function () {
+                    syncBaseFareFromSelectedFare();
                     syncFareValues();
                     validateField(fareField);
                 });
@@ -433,10 +476,14 @@
                 });
 
                 fareField.addEventListener('change', function () {
+                    syncBaseFareFromSelectedFare();
                     syncFareValues();
                     validateField(fareField);
                 });
             }
+            halfTripField.addEventListener('change', function () {
+                syncFareValues();
+            });
             totalAmountField.addEventListener('input', function () {
                 totalAmountField.dataset.autoFilled = 'false';
                 validateField(totalAmountField);
@@ -466,6 +513,7 @@
 
             setAutoFilledFieldState();
             updateDriverCnicState(getSelectedTransporterOwnerType());
+            syncBaseFareFromSelectedFare();
             syncFareValues();
             syncHiddenFields();
 

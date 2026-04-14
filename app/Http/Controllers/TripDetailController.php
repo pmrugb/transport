@@ -184,7 +184,9 @@ class TripDetailController extends Controller
     public function store(StoreTripDetailRequest $request): RedirectResponse
     {
         $payload = $request->validated();
-        $payload['total_amount'] = (float) $payload['fare_amount'] * (int) $payload['no_of_trips'];
+        ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
+        $payload['fare_amount'] = $fareAmount;
+        $payload['total_amount'] = $totalAmount;
         $payload['created_by'] = auth()->id();
 
         DB::transaction(function () use ($payload): void {
@@ -214,7 +216,9 @@ class TripDetailController extends Controller
         $this->ensureSuperadmin();
 
         $payload = $request->validated();
-        $payload['total_amount'] = (float) $payload['fare_amount'] * (int) $payload['no_of_trips'];
+        ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
+        $payload['fare_amount'] = $fareAmount;
+        $payload['total_amount'] = $totalAmount;
 
         DB::transaction(function () use ($trip, $payload): void {
             $trip->update($payload);
@@ -259,6 +263,20 @@ class TripDetailController extends Controller
                 'remarks' => $payload['remarks'] ?? null,
             ]
         );
+    }
+
+    private function resolveTripAmounts(array $payload): array
+    {
+        $baseFareAmount = (float) Fare::query()->whereKey($payload['fare_id'])->value('amount');
+        $fareAmount = !empty($payload['is_half_trip'])
+            ? round($baseFareAmount / 2, 2)
+            : round($baseFareAmount, 2);
+        $totalAmount = round($fareAmount * (int) $payload['no_of_trips'], 2);
+
+        return [
+            'fare_amount' => $fareAmount,
+            'total_amount' => $totalAmount,
+        ];
     }
 
     private function sharedData(): array

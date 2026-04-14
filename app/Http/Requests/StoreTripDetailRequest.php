@@ -42,6 +42,7 @@ class StoreTripDetailRequest extends FormRequest
             'driver_mobile' => ['required', 'string', 'max:12', 'regex:/^\d{4}-\d{7}$/'],
             'fare_id' => ['required', 'integer', 'exists:fares,id'],
             'fare_amount' => ['required', 'numeric', 'min:0'],
+            'is_half_trip' => ['nullable', 'boolean'],
             'no_of_trips' => ['required', 'integer', 'min:1'],
             'total_amount' => ['required', 'numeric', 'min:0'],
             'district_id' => ['required', 'integer', 'exists:districts,id'],
@@ -77,6 +78,10 @@ class StoreTripDetailRequest extends FormRequest
                 ])),
             ]);
         }
+
+        $this->merge([
+            'is_half_trip' => $this->boolean('is_half_trip'),
+        ]);
     }
 
     public function withValidator(Validator $validator): void
