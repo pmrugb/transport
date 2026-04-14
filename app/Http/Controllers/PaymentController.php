@@ -120,7 +120,7 @@ class PaymentController extends Controller
 
     public function approve(TripCost $payment): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManagePayments();
 
         if (in_array($payment->status, ['paid', 'rejected'], true)) {
             return back()->with('error', 'This payment cannot be approved in its current state.');
@@ -133,7 +133,7 @@ class PaymentController extends Controller
 
     public function reject(TripCost $payment): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManagePayments();
 
         if ($payment->status === 'paid') {
             return back()->with('error', 'Paid payments cannot be rejected.');
@@ -142,6 +142,29 @@ class PaymentController extends Controller
         $payment->update(['status' => 'rejected']);
 
         return back()->with('success', 'Payment rejected successfully.');
+    }
+
+    public function bulkApprove(Request $request): RedirectResponse
+    {
+        $this->ensureCanManagePayments();
+
+        $validated = $request->validate([
+            'payment_ids' => ['required', 'array', 'min:1'],
+            'payment_ids.*' => ['integer', 'distinct', 'exists:trip_costs,id'],
+        ]);
+
+        $approvedCount = TripCost::query()
+            ->whereIn('id', $validated['payment_ids'])
+            ->where('status', 'due')
+            ->update(['status' => 'paid']);
+
+        if ($approvedCount === 0) {
+            return back()->with('error', 'No due payments were selected for approval.');
+        }
+
+        $label = $approvedCount === 1 ? 'payment' : 'payments';
+
+        return back()->with('success', "{$approvedCount} {$label} approved successfully.");
     }
 
     private function renderIndex(Request $request, ?string $status, string $heading, string $subtitle): View
@@ -185,7 +208,7 @@ class PaymentController extends Controller
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'transporters' => Operator::query()->select(['id', 'name'])->orderBy('name')->get(),
             'routes' => TransportRoute::query()->select(['id', 'route_name'])->orderBy('route_name')->get(),
-            'canManagePayments' => auth()->user()?->isSuperadmin() ?? false,
+            'canManagePayments' => auth()->user()?->canManagePayments() ?? false,
             'stats' => [
                 'total' => (int) ($paymentStats?->total ?? 0),
                 'due' => (int) ($paymentStats?->due ?? 0),
@@ -204,9 +227,9 @@ class PaymentController extends Controller
         };
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanManagePayments(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canManagePayments(), 403);
     }
 
     private function filteredPaymentsQuery(Request $request)

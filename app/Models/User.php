@@ -47,6 +47,11 @@ class User extends Authenticatable
         return $this->isNatcoDepartmentUser();
     }
 
+    public function canManagePayments(): bool
+    {
+        return $this->isSuperadmin() || $this->isNatcoDepartmentUser();
+    }
+
     public function isNatcoDepartmentUser(): bool
     {
         return strtolower((string) $this->email) === 'natco@pmrugb.gov.pk';

@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/payments/export/excel', [PaymentController::class, 'exportExcel'])->name('payments.export.excel');
     Route::get('/payments/export/pdf-view', [PaymentController::class, 'pdfView'])->name('payments.export.pdf-view');
     Route::get('/payments/export/pdf-table-view', [PaymentController::class, 'pdfTableView'])->name('payments.export.pdf-table-view');
+    Route::patch('/payments/bulk-approve', [PaymentController::class, 'bulkApprove'])->name('payments.bulk-approve');
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
     Route::patch('/payments/{payment}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
     Route::patch('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');

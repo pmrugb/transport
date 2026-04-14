@@ -235,13 +235,29 @@
                             <h3 class="section-title">Payment Records</h3>
                             <p class="section-copy">Transporter payment entries generated from saved trip activity.</p>
                         </div>
+                        @if ($canManagePayments)
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-success" form="bulkApprovePaymentsForm" type="submit">
+                                    <i class="fa-solid fa-check-double me-2"></i>Approve Selected
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body">
+                    <form method="POST" action="{{ route('payments.bulk-approve') }}" id="bulkApprovePaymentsForm" class="d-none">
+                        @csrf
+                        @method('PATCH')
+                    </form>
                     <div class="table-shell table-wrap">
                         <table class="table table-app align-middle">
                             <thead>
                                 <tr>
+                                    @if ($canManagePayments)
+                                        <th class="text-center text-nowrap" style="width: 56px;">
+                                            <input type="checkbox" class="form-check-input js-select-all-payments" aria-label="Select all due payments">
+                                        </th>
+                                    @endif
                                     <th>Sr #</th>
                                     <th>Trip Date</th>
                                     <th>Transporter</th>
@@ -257,6 +273,20 @@
                             <tbody>
                                 @forelse ($payments as $payment)
                                     <tr>
+                                        @if ($canManagePayments)
+                                            <td class="text-center">
+                                                @if ($payment->status === 'due')
+                                                    <input
+                                                        type="checkbox"
+                                                        name="payment_ids[]"
+                                                        value="{{ $payment->id }}"
+                                                        class="form-check-input js-payment-checkbox"
+                                                        form="bulkApprovePaymentsForm"
+                                                        aria-label="Select payment {{ $payment->id }}"
+                                                    >
+                                                @endif
+                                            </td>
+                                        @endif
                                         <td>{{ $payments->firstItem() + $loop->index }}</td>
                                         <td class="text-nowrap">{{ $payment->trip?->trip_date?->format('Y-m-d') ?: 'N/A' }}</td>
                                         <td>{{ $payment->transporter?->name ?: 'N/A' }}</td>
@@ -293,7 +323,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="10" class="text-center text-muted py-4">No payment records found.</td></tr>
+                                    <tr><td colspan="{{ $canManagePayments ? 11 : 10 }}" class="text-center text-muted py-4">No payment records found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -305,3 +335,39 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            var selectAll = document.querySelector('.js-select-all-payments');
+            var itemSelector = '.js-payment-checkbox';
+
+            if (!selectAll) {
+                return;
+            }
+
+            var syncSelectAll = function () {
+                var checkboxes = Array.from(document.querySelectorAll(itemSelector));
+                var checkedCount = checkboxes.filter(function (checkbox) {
+                    return checkbox.checked;
+                }).length;
+
+                selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            };
+
+            selectAll.addEventListener('change', function () {
+                document.querySelectorAll(itemSelector).forEach(function (checkbox) {
+                    checkbox.checked = selectAll.checked;
+                });
+                syncSelectAll();
+            });
+
+            document.querySelectorAll(itemSelector).forEach(function (checkbox) {
+                checkbox.addEventListener('change', syncSelectAll);
+            });
+
+            syncSelectAll();
+        })();
+    </script>
+@endpush
