@@ -12,15 +12,14 @@ class VehicleTypeController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $vehicleTypeQuery = VehicleType::query()->latest();
 
         return view('settings.vehicle-types.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'vehicleTypes' => VehicleType::query()
-                ->latest()
-                ->paginate($perPage)
+            'vehicleTypes' => $vehicleTypeQuery
+                ->paginate($this->paginationSize($perPage, (clone $vehicleTypeQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

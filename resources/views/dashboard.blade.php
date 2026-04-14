@@ -134,11 +134,9 @@
                                 @if ($canManageTrips)
                                     <td class="text-center text-nowrap">
                                         <div class="action-stack justify-content-center">
-                                            @if ($trip->tripCost)
-                                                <a href="{{ route('payments.show', $trip->tripCost) }}" class="action-btn btn-view" title="View Trip Payment">
-                                                    <i class="fa-solid fa-eye"></i>
-                                                </a>
-                                            @endif
+                                            <a href="{{ route('trips.show', $trip) }}" class="action-btn btn-view" title="View Trip">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
                                             <a href="{{ route('trips.edit', $trip) }}" class="action-btn btn-edit" title="Edit Trip">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>

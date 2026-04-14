@@ -79,50 +79,7 @@
                 </table>
             </div>
 
-            <div class="table-pagination-bar">
-                <div class="table-pagination-summary">
-                    Showing {{ $routes->firstItem() ?? 0 }} to {{ $routes->lastItem() ?? 0 }} of {{ $routes->total() }} entries
-                </div>
-
-                <div class="table-pagination-controls">
-                    <form method="get" class="table-per-page-form">
-                        <select class="form-select table-per-page-select" name="per_page" onchange="this.form.submit()">
-                            @foreach ([10, 25, 50, 100] as $option)
-                                <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
-                            @endforeach
-                        </select>
-                        <span class="table-per-page-label">per page</span>
-                    </form>
-
-                    @if ($routes->hasPages())
-                        <nav aria-label="Routes pagination">
-                            <ul class="pagination table-pagination-list mb-0">
-                                <li class="page-item {{ $routes->onFirstPage() ? 'disabled' : '' }}">
-                                    <a class="page-link" href="{{ $routes->previousPageUrl() ?? '#' }}" aria-label="Previous">
-                                        <i class="fa-solid fa-chevron-left app-icon"></i>
-                                    </a>
-                                </li>
-
-                                @foreach ($routes->linkCollection() as $link)
-                                    @continue($link['label'] === '&laquo; Previous' || $link['label'] === 'Next &raquo;')
-
-                                    <li class="page-item {{ $link['active'] ? 'active' : '' }} {{ $link['url'] ? '' : 'disabled' }}">
-                                        <a class="page-link" href="{{ $link['url'] ?? '#' }}">
-                                            {{ str_replace('&hellip;', '...', $link['label']) }}
-                                        </a>
-                                    </li>
-                                @endforeach
-
-                                <li class="page-item {{ $routes->hasMorePages() ? '' : 'disabled' }}">
-                                    <a class="page-link" href="{{ $routes->nextPageUrl() ?? '#' }}" aria-label="Next">
-                                        <i class="fa-solid fa-chevron-right app-icon"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    @endif
-                </div>
-            </div>
+            @include('settings.partials.pagination', ['paginator' => $routes, 'perPage' => $perPage])
         </div>
     </section>
 @endsection

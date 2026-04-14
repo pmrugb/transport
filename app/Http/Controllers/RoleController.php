@@ -31,13 +31,13 @@ class RoleController extends Controller
 
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $roleQuery = Role::query()->withCount('users')->latest();
 
         return view('settings.roles.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'roles' => Role::query()->withCount('users')->latest()->paginate($perPage)->withQueryString(),
+            'roles' => $roleQuery->paginate($this->paginationSize($perPage, (clone $roleQuery)->toBase()->getCountForPagination()))->withQueryString(),
         ]);
     }
 

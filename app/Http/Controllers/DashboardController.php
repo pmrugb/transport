@@ -16,8 +16,7 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
         $user = $request->user();
         $isNatcoDashboard = $user?->isNatcoDepartmentUser() ?? false;
 
@@ -35,7 +34,7 @@ class DashboardController extends Controller
                     fn ($query) => $query->whereRaw('1 = 0')
                 );
 
-            $recentTrips = (clone $natcoTripBaseQuery)
+            $recentTripsQuery = (clone $natcoTripBaseQuery)
                 ->select([
                     'id',
                     'department_id',
@@ -58,8 +57,10 @@ class DashboardController extends Controller
                     'transporter:id,name',
                     'tripCost:id,trip_id',
                 ])
-                ->latest()
-                ->paginate($perPage)
+                ->latest();
+
+            $recentTrips = $recentTripsQuery
+                ->paginate($this->paginationSize($perPage, (clone $recentTripsQuery)->toBase()->getCountForPagination()))
                 ->withQueryString();
 
             $routeSnapshot = TransportRoute::query()

@@ -24,7 +24,7 @@ class TripDetailController extends Controller
             ->select(['id', 'route_id', 'transporter_id'])
             ->with([
                 'route:id,district_id',
-                'transporter:id,name,cnic,phone',
+                'transporter:id,name,owner_type,cnic,phone',
             ])
             ->findOrFail((int) $request->integer('vehicle_id'));
 
@@ -37,6 +37,7 @@ class TripDetailController extends Controller
         return response()->json([
             'route_id' => $vehicle->route_id,
             'transporter_id' => $vehicle->transporter_id,
+            'transporter_owner_type' => $vehicle->transporter?->owner_type,
             'district_id' => $vehicle->route?->district_id,
             'driver_name' => $vehicle->transporter?->name,
             'driver_cnic' => $vehicle->transporter?->cnic,
@@ -67,35 +68,48 @@ class TripDetailController extends Controller
 
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $search = trim((string) $request->input('search', ''));
+        $tripQuery = TripDetail::query()
+            ->select([
+                'id',
+                'vehicle_id',
+                'route_id',
+                'transporter_id',
+                'driver_name',
+                'driver_mobile',
+                'district_id',
+                'fare_amount',
+                'total_amount',
+                'status',
+                'created_at',
+            ])
+            ->with([
+                'route:id,route_name',
+                'vehicle:id,registration_no',
+                'transporter:id,name',
+                'district:id,name',
+                'tripCost:id,trip_id',
+            ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('driver_name', 'like', "%{$search}%")
+                        ->orWhere('driver_mobile', 'like', "%{$search}%")
+                        ->orWhereHas('vehicle', fn ($vehicleQuery) => $vehicleQuery->where('registration_no', 'like', "%{$search}%"))
+                        ->orWhereHas('route', fn ($routeQuery) => $routeQuery->where('route_name', 'like', "%{$search}%"))
+                        ->orWhereHas('transporter', fn ($transporterQuery) => $transporterQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest();
 
         return view('trips.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'trips' => TripDetail::query()
-                ->select([
-                    'id',
-                    'vehicle_id',
-                    'route_id',
-                    'transporter_id',
-                    'driver_name',
-                    'driver_mobile',
-                    'district_id',
-                    'fare_amount',
-                    'total_amount',
-                    'status',
-                    'created_at',
-                ])
-                ->with([
-                    'route:id,route_name',
-                    'vehicle:id,registration_no',
-                    'transporter:id,name',
-                    'district:id,name',
-                    'tripCost:id,trip_id',
-                ])
-                ->latest()
-                ->paginate($perPage)
+            'search' => $search,
+            'trips' => $tripQuery
+                ->paginate($this->paginationSize($perPage, (clone $tripQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }
@@ -111,6 +125,25 @@ class TripDetailController extends Controller
             'formAction' => route('trips.store'),
             'formMethod' => 'post',
             'submitLabel' => 'Save Trip',
+        ]);
+    }
+
+    public function show(TripDetail $trip): View
+    {
+        $trip->load([
+            'route:id,route_name,starting_point,ending_point',
+            'vehicle:id,registration_no',
+            'transporter:id,name,cnic,phone,owner_type',
+            'district:id,name',
+            'fare:id,amount,effective_from',
+            'tripCost:id,trip_id,status',
+            'creator:id,name',
+        ]);
+
+        return view('trips.show', [
+            'trip' => $trip,
+            'statuses' => TripDetail::STATUSES,
+            'canManageTrips' => auth()->user()?->isSuperadmin() ?? false,
         ]);
     }
 
@@ -197,7 +230,7 @@ class TripDetailController extends Controller
     private function sharedData(): array
     {
         $routes = TransportRoute::query()
-            ->select(['id', 'route_name', 'district_id'])
+            ->select(['id', 'route_name', 'starting_point', 'ending_point', 'district_id'])
             ->with(['district:id,name'])
             ->orderBy('route_name')
             ->get();
@@ -227,7 +260,7 @@ class TripDetailController extends Controller
         return [
             'routes' => $routes,
             'vehicles' => $vehicles,
-            'transporters' => Operator::query()->select(['id', 'name'])->orderBy('name')->get(),
+            'transporters' => Operator::query()->select(['id', 'name', 'owner_type'])->orderBy('name')->get(),
             'fares' => $fares,
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'statuses' => TripDetail::STATUSES,

@@ -12,15 +12,15 @@ class DivisionController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $divisionQuery = Division::query()
+            ->withCount('districts')
+            ->latest();
 
         return view('settings.divisions.index', [
             'perPage' => $perPage,
-            'divisions' => Division::query()
-                ->withCount('districts')
-                ->latest()
-                ->paginate($perPage)
+            'divisions' => $divisionQuery
+                ->paginate($this->paginationSize($perPage, (clone $divisionQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

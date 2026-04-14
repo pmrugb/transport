@@ -258,7 +258,7 @@
                                 @forelse ($payments as $payment)
                                     <tr>
                                         <td>{{ $payments->firstItem() + $loop->index }}</td>
-                                        <td class="text-nowrap">{{ $payment->calculation_date?->format('Y-m-d') ?: 'N/A' }}</td>
+                                        <td class="text-nowrap">{{ $payment->trip?->trip_date?->format('Y-m-d') ?: 'N/A' }}</td>
                                         <td>{{ $payment->transporter?->name ?: 'N/A' }}</td>
                                         <td>{{ $payment->vehicle?->registration_no ?: 'N/A' }}</td>
                                         <td>{{ $payment->route?->route_name ?: 'N/A' }}</td>

@@ -15,21 +15,34 @@ class VehicleController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $search = trim((string) $request->input('search', ''));
+        $vehicleQuery = Vehicle::query()
+            ->select(['id', 'transporter_id', 'vehicle_type', 'registration_no', 'chassis_no', 'route_id', 'status', 'remarks', 'created_at'])
+            ->with([
+                'transporter:id,name',
+                'vehicleType:id,name',
+                'route:id,route_name',
+            ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('registration_no', 'like', "%{$search}%")
+                        ->orWhere('chassis_no', 'like', "%{$search}%")
+                        ->orWhere('remarks', 'like', "%{$search}%")
+                        ->orWhereHas('transporter', fn ($transporterQuery) => $transporterQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('vehicleType', fn ($vehicleTypeQuery) => $vehicleTypeQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('route', fn ($routeQuery) => $routeQuery->where('route_name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest();
 
         return view('vehicles.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'vehicles' => Vehicle::query()
-                ->select(['id', 'transporter_id', 'vehicle_type', 'registration_no', 'chassis_no', 'route_id', 'status', 'remarks', 'created_at'])
-                ->with([
-                    'transporter:id,name',
-                    'vehicleType:id,name',
-                    'route:id,route_name',
-                ])
-                ->latest()
-                ->paginate($perPage)
+            'search' => $search,
+            'vehicles' => $vehicleQuery
+                ->paginate($this->paginationSize($perPage, (clone $vehicleQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

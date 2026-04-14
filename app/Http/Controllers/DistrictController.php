@@ -13,16 +13,16 @@ class DistrictController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $districtQuery = District::query()
+            ->with('division')
+            ->latest();
 
         return view('settings.districts.index', [
             'perPage' => $perPage,
             'divisions' => Division::query()->orderBy('name')->get(),
-            'districts' => District::query()
-                ->with('division')
-                ->latest()
-                ->paginate($perPage)
+            'districts' => $districtQuery
+                ->paginate($this->paginationSize($perPage, (clone $districtQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

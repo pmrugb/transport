@@ -18,20 +18,20 @@ class UserController extends Controller
     {
         $this->ensureSuperadmin();
 
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $userQuery = User::query()
+            ->select(['id', 'name', 'email', 'role', 'division_id', 'district_id', 'created_at'])
+            ->with([
+                'district:id,name',
+                'division:id,name',
+            ])
+            ->latest();
 
         return view('users.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'users' => User::query()
-                ->select(['id', 'name', 'email', 'role', 'division_id', 'district_id', 'created_at'])
-                ->with([
-                    'district:id,name',
-                    'division:id,name',
-                ])
-                ->latest()
-                ->paginate($perPage)
+            'users' => $userQuery
+                ->paginate($this->paginationSize($perPage, (clone $userQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

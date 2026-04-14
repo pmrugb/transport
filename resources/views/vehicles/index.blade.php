@@ -13,11 +13,27 @@
         <div class="col-12">
             <div class="card section-card table-card mb-4">
                 <div class="card-header">
-                    <div class="table-toolbar">
+                    <div class="table-toolbar align-items-start align-items-md-center">
                         <div>
                             <h3 class="section-title">Vehicle Records</h3>
                             <p class="section-copy">Complete listing of vehicles available in the system.</p>
                         </div>
+                        <form method="GET" action="{{ route('vehicles.index') }}" class="ms-md-auto js-live-search-form">
+                            <div class="input-group input-group-sm" style="max-width: 220px;">
+                                <input
+                                    type="search"
+                                    name="search"
+                                    class="form-control form-control-sm js-live-search-input"
+                                    value="{{ $search }}"
+                                    placeholder="Search"
+                                    autocomplete="off"
+                                    aria-label="Search vehicle records"
+                                >
+                                <button class="btn btn-outline-secondary btn-sm" type="submit" title="Search">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="card-body">
@@ -82,3 +98,23 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        document.querySelectorAll('.js-live-search-form').forEach(function (form) {
+            var input = form.querySelector('.js-live-search-input');
+            var timer;
+
+            if (!input) {
+                return;
+            }
+
+            input.addEventListener('input', function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    form.requestSubmit();
+                }, 250);
+            });
+        });
+    </script>
+@endpush

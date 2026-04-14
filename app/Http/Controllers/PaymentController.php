@@ -146,8 +146,7 @@ class PaymentController extends Controller
 
     private function renderIndex(Request $request, ?string $status, string $heading, string $subtitle): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
 
         $request->merge([
             'status' => $request->input('status', $status),
@@ -162,7 +161,7 @@ class PaymentController extends Controller
             'pageHeading' => $heading,
             'pageSubtitle' => $subtitle,
             'perPage' => $perPage,
-            'payments' => $paymentsQuery->paginate($perPage)->withQueryString(),
+            'payments' => $paymentsQuery->paginate($this->paginationSize($perPage, (clone $paymentsQuery)->toBase()->getCountForPagination()))->withQueryString(),
             'statusBadges' => [
                 'due' => $this->statusBadge('due'),
                 'paid' => $this->statusBadge('paid'),
@@ -213,6 +212,10 @@ class PaymentController extends Controller
     private function filteredPaymentsQuery(Request $request)
     {
         $filters = $this->filterValues($request);
+        $tripDateOrderQuery = TripDetail::query()
+            ->select('trip_date')
+            ->whereColumn('trip_details.id', 'trip_costs.trip_id')
+            ->limit(1);
 
         return TripCost::query()
             ->select([
@@ -251,9 +254,10 @@ class PaymentController extends Controller
             })
             ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
             ->when($filters['route_id'], fn ($query, $routeId) => $query->where('route_id', $routeId))
-            ->when($filters['from_date'], fn ($query, $fromDate) => $query->whereDate('calculation_date', '>=', $fromDate))
-            ->when($filters['to_date'], fn ($query, $toDate) => $query->whereDate('calculation_date', '<=', $toDate))
-            ->latest();
+            ->when($filters['from_date'], fn ($query, $fromDate) => $query->whereHas('trip', fn ($tripQuery) => $tripQuery->whereDate('trip_date', '>=', $fromDate)))
+            ->when($filters['to_date'], fn ($query, $toDate) => $query->whereHas('trip', fn ($tripQuery) => $tripQuery->whereDate('trip_date', '<=', $toDate)))
+            ->orderByDesc($tripDateOrderQuery)
+            ->orderByDesc('created_at');
     }
 
     private function filterValues(Request $request): array

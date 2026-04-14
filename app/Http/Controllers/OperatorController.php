@@ -13,17 +13,29 @@ class OperatorController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $search = trim((string) $request->input('search', ''));
+        $operatorQuery = Operator::query()
+            ->select(['id', 'owner_type', 'name', 'cnic', 'phone', 'address', 'district_id', 'created_at'])
+            ->with(['district:id,name'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('cnic', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%")
+                        ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest();
 
         return view('operators.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'operators' => Operator::query()
-                ->select(['id', 'owner_type', 'name', 'cnic', 'phone', 'address', 'district_id', 'created_at'])
-                ->with(['district:id,name'])
-                ->latest()
-                ->paginate($perPage)
+            'search' => $search,
+            'operators' => $operatorQuery
+                ->paginate($this->paginationSize($perPage, (clone $operatorQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

@@ -46,7 +46,7 @@
             <select class="form-select @error('transporter_id') is-invalid @enderror" id="transporter_id" name="transporter_id" data-placeholder="Select transporter" required>
                 <option value="">Select transporter</option>
                 @foreach ($transporters as $transporter)
-                    <option value="{{ $transporter->id }}" @selected((string) old('transporter_id', $trip->transporter_id) === (string) $transporter->id)>
+                    <option value="{{ $transporter->id }}" data-owner-type="{{ $transporter->owner_type }}" @selected((string) old('transporter_id', $trip->transporter_id) === (string) $transporter->id)>
                         {{ $transporter->name }}
                     </option>
                 @endforeach
@@ -75,7 +75,7 @@
             @error('driver_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
-            <label class="form-label fw-semibold" for="driver_cnic">Driver CNIC <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold" for="driver_cnic">Driver CNIC <span class="text-danger" id="driver_cnic_required">*</span></label>
             <input class="form-control @error('driver_cnic') is-invalid @enderror" id="driver_cnic" name="driver_cnic" type="text" inputmode="numeric" maxlength="15" placeholder="12345-1234567-1" value="{{ old('driver_cnic', $trip->driver_cnic) }}" required>
             @error('driver_cnic')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
@@ -155,6 +155,7 @@
             const driverNameField = document.getElementById('driver_name');
             const cnicField = document.getElementById('driver_cnic');
             const mobileField = document.getElementById('driver_mobile');
+            const cnicRequiredMarker = document.getElementById('driver_cnic_required');
             const vehicleDetailsUrl = form.dataset.vehicleDetailsUrl;
             const routeDetailsUrl = form.dataset.routeDetailsUrl;
 
@@ -176,6 +177,33 @@
                 transporterHiddenField.value = transporterField.value;
                 districtHiddenField.value = districtField.value;
                 fareHiddenField.value = fareField.value;
+            };
+
+            const getSelectedTransporterOwnerType = function () {
+                const selectedOption = transporterField.options[transporterField.selectedIndex];
+
+                return selectedOption ? selectedOption.dataset.ownerType || '' : '';
+            };
+
+            const updateDriverCnicState = function (ownerType) {
+                const isCompany = ownerType === 'company';
+
+                cnicField.required = !isCompany;
+                cnicField.placeholder = isCompany ? 'Optional for transport company' : '12345-1234567-1';
+
+                if (cnicRequiredMarker) {
+                    cnicRequiredMarker.classList.toggle('d-none', isCompany);
+                }
+
+                if (isCompany && !cnicField.value.trim()) {
+                    cnicField.classList.remove('is-invalid');
+
+                    const feedback = cnicField.parentElement.querySelector('.client-invalid-feedback');
+
+                    if (feedback) {
+                        feedback.remove();
+                    }
+                }
             };
 
             const setAutoFilledFieldState = function () {
@@ -301,18 +329,19 @@
                         fareAmountField.value = Number(data.fare_amount).toFixed(2);
                     }
 
-                    if (driverNameField && !driverNameField.value) {
+                    if (driverNameField) {
                         driverNameField.value = data.driver_name || '';
                     }
 
-                    if (cnicField && !cnicField.value) {
+                    if (cnicField) {
                         cnicField.value = formatCnic(data.driver_cnic || '');
                     }
 
-                    if (mobileField && !mobileField.value) {
+                    if (mobileField) {
                         mobileField.value = formatMobile(data.driver_mobile || '');
                     }
 
+                    updateDriverCnicState(data.transporter_owner_type || getSelectedTransporterOwnerType());
                     syncFareValues();
                     setAutoFilledFieldState();
                 });
@@ -378,6 +407,11 @@
                     validateField(vehicleField);
                 });
 
+                window.jQuery(transporterField).on('change', function () {
+                    updateDriverCnicState(getSelectedTransporterOwnerType());
+                    validateField(transporterField);
+                });
+
                 window.jQuery(fareField).on('change', function () {
                     syncFareValues();
                     validateField(fareField);
@@ -391,6 +425,11 @@
                 vehicleField.addEventListener('change', function () {
                     syncFromVehicle();
                     validateField(vehicleField);
+                });
+
+                transporterField.addEventListener('change', function () {
+                    updateDriverCnicState(getSelectedTransporterOwnerType());
+                    validateField(transporterField);
                 });
 
                 fareField.addEventListener('change', function () {
@@ -426,6 +465,7 @@
             }
 
             setAutoFilledFieldState();
+            updateDriverCnicState(getSelectedTransporterOwnerType());
             syncFareValues();
             syncHiddenFields();
 

@@ -12,15 +12,15 @@ class DepartmentController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $departmentQuery = Department::query()
+            ->latest();
 
         return view('settings.departments.index', [
             'perPage' => $perPage,
             'statuses' => Department::STATUSES,
-            'departments' => Department::query()
-                ->latest()
-                ->paginate($perPage)
+            'departments' => $departmentQuery
+                ->paginate($this->paginationSize($perPage, (clone $departmentQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

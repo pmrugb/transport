@@ -14,9 +14,9 @@ class SecurityLogController extends Controller
     {
         $this->ensureSuperadmin();
 
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
+        $logsQuery = $this->filteredLogsQuery($request);
 
         return view('logs.security-logs', [
             'perPage' => $perPage,
@@ -29,7 +29,7 @@ class SecurityLogController extends Controller
                 'failed_logins' => SecurityLog::query()->whereIn('event_type', ['failed_login', 'captcha_failed'])->count(),
                 'high_risk' => SecurityLog::query()->where('risk_level', 'high')->count(),
             ],
-            'logs' => $this->filteredLogsQuery($request)->paginate($perPage)->withQueryString(),
+            'logs' => $logsQuery->paginate($this->paginationSize($perPage, (clone $logsQuery)->toBase()->getCountForPagination()))->withQueryString(),
         ]);
     }
 

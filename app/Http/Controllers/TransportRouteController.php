@@ -55,27 +55,27 @@ class TransportRouteController extends Controller
 
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $routeQuery = TransportRoute::query()
+            ->select([
+                'id',
+                'route_code',
+                'route_name',
+                'starting_point',
+                'ending_point',
+                'timing',
+                'total_distance',
+                'district_id',
+                'created_at',
+            ])
+            ->with(['district:id,name'])
+            ->latest();
 
         return view('routes.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'routes' => TransportRoute::query()
-                ->select([
-                    'id',
-                    'route_code',
-                    'route_name',
-                    'starting_point',
-                    'ending_point',
-                    'timing',
-                    'total_distance',
-                    'district_id',
-                    'created_at',
-                ])
-                ->with(['district:id,name'])
-                ->latest()
-                ->paginate($perPage)
+            'routes' => $routeQuery
+                ->paginate($this->paginationSize($perPage, (clone $routeQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

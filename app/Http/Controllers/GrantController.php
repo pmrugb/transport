@@ -13,16 +13,16 @@ class GrantController extends Controller
 {
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $grantQuery = Grant::query()
+            ->with('district')
+            ->latest();
 
         return view('grants.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'grants' => Grant::query()
-                ->with('district')
-                ->latest()
-                ->paginate($perPage)
+            'grants' => $grantQuery
+                ->paginate($this->paginationSize($perPage, (clone $grantQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

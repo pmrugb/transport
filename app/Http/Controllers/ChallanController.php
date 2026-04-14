@@ -28,16 +28,16 @@ class ChallanController extends Controller
 
     public function index(Request $request): View
     {
-        $perPage = (int) $request->integer('per_page', 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $perPage = $this->resolvePerPage($request);
+        $challanQuery = Challan::query()
+            ->with(['route', 'district'])
+            ->latest();
 
         return view('challans.index', [
             ...$this->sharedData(),
             'perPage' => $perPage,
-            'challans' => Challan::query()
-                ->with(['route', 'district'])
-                ->latest()
-                ->paginate($perPage)
+            'challans' => $challanQuery
+                ->paginate($this->paginationSize($perPage, (clone $challanQuery)->toBase()->getCountForPagination()))
                 ->withQueryString(),
         ]);
     }

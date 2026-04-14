@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Fare;
+use App\Models\Operator;
 use App\Models\TripDetail;
 use App\Models\Vehicle;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -22,13 +23,22 @@ class StoreTripDetailRequest extends FormRequest
      */
     public function rules(): array
     {
+        $transporter = Operator::query()
+            ->select(['id', 'owner_type'])
+            ->find($this->integer('transporter_id'));
+        $driverCnicRules = ['nullable', 'string', 'max:15', 'regex:/^\d{5}-\d{7}-\d{1}$/'];
+
+        if (($transporter?->owner_type ?? 'private') !== 'company') {
+            array_unshift($driverCnicRules, 'required');
+        }
+
         return [
             'trip_date' => ['required', 'date', 'before_or_equal:today'],
             'route_id' => ['required', 'integer', 'exists:transport_routes,id'],
             'vehicle_id' => ['required', 'integer', 'exists:vehicles,id'],
             'transporter_id' => ['required', 'integer', 'exists:transporters,id'],
             'driver_name' => ['required', 'string', 'max:255'],
-            'driver_cnic' => ['required', 'string', 'max:15', 'regex:/^\d{5}-\d{7}-\d{1}$/'],
+            'driver_cnic' => $driverCnicRules,
             'driver_mobile' => ['required', 'string', 'max:12', 'regex:/^\d{4}-\d{7}$/'],
             'fare_id' => ['required', 'integer', 'exists:fares,id'],
             'fare_amount' => ['required', 'numeric', 'min:0'],

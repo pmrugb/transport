@@ -20,11 +20,27 @@
 
     <section class="card section-card table-card mb-4">
         <div class="card-header">
-            <div class="table-toolbar">
+            <div class="table-toolbar align-items-start align-items-md-center">
                 <div>
                     <h3 class="section-title">Transporter Records</h3>
                     <p class="section-copy">Complete listing of company and private transporter records.</p>
                 </div>
+                <form method="GET" action="{{ route('transporters.index') }}" class="ms-md-auto js-live-search-form">
+                    <div class="input-group input-group-sm" style="max-width: 220px;">
+                        <input
+                            type="search"
+                            name="search"
+                            class="form-control form-control-sm js-live-search-input"
+                            value="{{ $search }}"
+                            placeholder="Search"
+                            autocomplete="off"
+                            aria-label="Search transporter records"
+                        >
+                        <button class="btn btn-outline-secondary btn-sm" type="submit" title="Search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
         <div class="card-body">
@@ -81,50 +97,27 @@
                 </table>
             </div>
 
-            <div class="table-pagination-bar">
-                <div class="table-pagination-summary">
-                    Showing {{ $operators->firstItem() ?? 0 }} to {{ $operators->lastItem() ?? 0 }} of {{ $operators->total() }} entries
-                </div>
-
-                <div class="table-pagination-controls">
-                    <form method="get" class="table-per-page-form">
-                        <select class="form-select table-per-page-select" name="per_page" onchange="this.form.submit()">
-                            @foreach ([10, 25, 50, 100] as $option)
-                                <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
-                            @endforeach
-                        </select>
-                        <span class="table-per-page-label">per page</span>
-                    </form>
-
-                    @if ($operators->hasPages())
-                        <nav aria-label="Transporters pagination">
-                            <ul class="pagination table-pagination-list mb-0">
-                                <li class="page-item {{ $operators->onFirstPage() ? 'disabled' : '' }}">
-                                    <a class="page-link" href="{{ $operators->previousPageUrl() ?? '#' }}" aria-label="Previous">
-                                        <i class="fa-solid fa-chevron-left app-icon"></i>
-                                    </a>
-                                </li>
-
-                                @foreach ($operators->linkCollection() as $link)
-                                    @continue($link['label'] === '&laquo; Previous' || $link['label'] === 'Next &raquo;')
-
-                                    <li class="page-item {{ $link['active'] ? 'active' : '' }} {{ $link['url'] ? '' : 'disabled' }}">
-                                        <a class="page-link" href="{{ $link['url'] ?? '#' }}">
-                                            {{ str_replace('&hellip;', '...', $link['label']) }}
-                                        </a>
-                                    </li>
-                                @endforeach
-
-                                <li class="page-item {{ $operators->hasMorePages() ? '' : 'disabled' }}">
-                                    <a class="page-link" href="{{ $operators->nextPageUrl() ?? '#' }}" aria-label="Next">
-                                        <i class="fa-solid fa-chevron-right app-icon"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    @endif
-                </div>
-            </div>
+            @include('settings.partials.pagination', ['paginator' => $operators, 'perPage' => $perPage])
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        document.querySelectorAll('.js-live-search-form').forEach(function (form) {
+            var input = form.querySelector('.js-live-search-input');
+            var timer;
+
+            if (!input) {
+                return;
+            }
+
+            input.addEventListener('input', function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    form.requestSubmit();
+                }, 250);
+            });
+        });
+    </script>
+@endpush
