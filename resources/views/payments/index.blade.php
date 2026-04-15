@@ -246,7 +246,7 @@
         <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Amount Left</p><h2 class="stat-value stat-value-compact">{{ number_format((float) $stats['amount_left'], 0) }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-wallet app-icon"></i></span></div><p class="stat-note">Amount still pending in due payments.</p></div></div></div>
     </section>
 
-    <section class="row g-4 mt-2">
+    <section class="row g-4 mt-2" id="paymentsResultsRegion" data-live-region>
         <div class="col-12">
             <div class="card section-card payment-export-card">
                 <div class="card-body">
@@ -277,7 +277,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <form method="get" action="{{ route($currentStatusRoute) }}" id="paymentFilters">
+                    <form method="get" action="{{ route($currentStatusRoute) }}" id="paymentFilters" data-live-submit-target="#paymentsResultsRegion">
                         <div class="row payment-filter-grid">
                             <div class="col-md-2">
                                 <label class="form-label fw-semibold" for="status">Status</label>
@@ -503,10 +503,11 @@
 
 @push('scripts')
     <script>
-        (function () {
-            var selectAll = document.querySelector('.js-select-all-payments');
+        window.appInitPaymentsIndex = function (scope) {
+            var root = scope && scope.querySelector ? scope : document;
+            var selectAll = root.querySelector('.js-select-all-payments');
             var itemSelector = '.js-payment-checkbox';
-            var tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            var tooltipElements = root.querySelectorAll('[data-bs-toggle="tooltip"]');
             var modalElement = document.getElementById('paymentStatusReasonModal');
             var modalForm = document.getElementById('paymentStatusReasonForm');
             var modalTitle = document.getElementById('paymentStatusReasonModalLabel');
@@ -515,8 +516,8 @@
             var modalSubmitButton = document.getElementById('paymentStatusReasonSubmit');
             var holdActionBaseUrl = @json(url('/payments/__PAYMENT__/hold'));
             var rejectActionBaseUrl = @json(url('/payments/__PAYMENT__/reject'));
-            var cnicSearchField = document.getElementById('paymentCnicSearch');
-            var paymentRows = Array.from(document.querySelectorAll('table.table-app tbody tr[data-transporter-cnic]'));
+            var cnicSearchField = root.querySelector('#paymentCnicSearch');
+            var paymentRows = Array.from(root.querySelectorAll('table.table-app tbody tr[data-transporter-cnic]'));
 
             if (window.bootstrap && window.bootstrap.Tooltip) {
                 tooltipElements.forEach(function (element) {
@@ -524,7 +525,8 @@
                 });
             }
 
-            if (cnicSearchField) {
+            if (cnicSearchField && cnicSearchField.dataset.bound !== 'true') {
+                cnicSearchField.dataset.bound = 'true';
                 cnicSearchField.addEventListener('keyup', function () {
                     var query = cnicSearchField.value.trim().toLowerCase().replace(/\s+/g, '');
 
@@ -535,7 +537,12 @@
                 });
             }
 
-            document.querySelectorAll('[data-bs-toggle-modal="modal"]').forEach(function (button) {
+            root.querySelectorAll('[data-bs-toggle-modal="modal"]').forEach(function (button) {
+                if (button.dataset.bound === 'true') {
+                    return;
+                }
+
+                button.dataset.bound = 'true';
                 button.addEventListener('click', function () {
                     if (!modalElement || !modalForm || !modalReasonField) {
                         return;
@@ -561,32 +568,49 @@
                 });
             });
 
-            if (!selectAll) {
-                // Keep the modal and tooltips active even when no bulk-approve checkbox is present.
-            } else {
-                var syncSelectAll = function () {
-                    var checkboxes = Array.from(document.querySelectorAll(itemSelector));
-                    var checkedCount = checkboxes.filter(function (checkbox) {
-                        return checkbox.checked;
-                    }).length;
-
-                    selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
-                    selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-                };
-
-                selectAll.addEventListener('change', function () {
-                    document.querySelectorAll(itemSelector).forEach(function (checkbox) {
-                        checkbox.checked = selectAll.checked;
-                    });
-                    syncSelectAll();
-                });
-
-                document.querySelectorAll(itemSelector).forEach(function (checkbox) {
-                    checkbox.addEventListener('change', syncSelectAll);
-                });
-
-                syncSelectAll();
+            if (!selectAll || selectAll.dataset.bound === 'true') {
+                return;
             }
-        })();
+
+            selectAll.dataset.bound = 'true';
+
+            var syncSelectAll = function () {
+                var checkboxes = Array.from(root.querySelectorAll(itemSelector));
+                var checkedCount = checkboxes.filter(function (checkbox) {
+                    return checkbox.checked;
+                }).length;
+
+                selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            };
+
+            selectAll.addEventListener('change', function () {
+                root.querySelectorAll(itemSelector).forEach(function (checkbox) {
+                    checkbox.checked = selectAll.checked;
+                });
+                syncSelectAll();
+            });
+
+            root.querySelectorAll(itemSelector).forEach(function (checkbox) {
+                if (checkbox.dataset.bound === 'true') {
+                    return;
+                }
+
+                checkbox.dataset.bound = 'true';
+                checkbox.addEventListener('change', syncSelectAll);
+            });
+
+            syncSelectAll();
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.appInitPaymentsIndex(document);
+        });
+
+        document.addEventListener('app:fragment-updated', function (event) {
+            if (event.detail && event.detail.targetSelector === '#paymentsResultsRegion') {
+                window.appInitPaymentsIndex(event.detail.container);
+            }
+        });
     </script>
 @endpush

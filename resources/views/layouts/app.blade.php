@@ -395,6 +395,163 @@
             window.appInitFlatpickr(scope);
         };
 
+        window.appLoadLiveRegion = function (targetSelector, url, options) {
+            const settings = options || {};
+            const currentRegion = document.querySelector(targetSelector);
+
+            if (!currentRegion || !window.fetch) {
+                window.location.assign(url);
+                return Promise.resolve();
+            }
+
+            currentRegion.classList.add('opacity-75');
+            currentRegion.style.pointerEvents = 'none';
+
+            return window.fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            }).then(function (response) {
+                return response.text();
+            }).then(function (html) {
+                const parser = new DOMParser();
+                const documentFragment = parser.parseFromString(html, 'text/html');
+                const nextRegion = documentFragment.querySelector(targetSelector);
+
+                if (!nextRegion) {
+                    window.location.assign(url);
+                    return;
+                }
+
+                currentRegion.replaceWith(nextRegion);
+
+                if (settings.updateHistory !== false) {
+                    window.history.replaceState({}, '', url);
+                }
+
+                window.appInitEnhancements(nextRegion);
+                window.appInitLiveRegions(nextRegion);
+                document.dispatchEvent(new CustomEvent('app:fragment-updated', {
+                    detail: {
+                        container: nextRegion,
+                        targetSelector: targetSelector,
+                    },
+                }));
+
+                if (settings.focusSelector) {
+                    const nextFocusField = document.querySelector(settings.focusSelector);
+
+                    if (nextFocusField) {
+                        nextFocusField.focus();
+
+                        if (typeof settings.focusValue === 'string' && 'value' in nextFocusField) {
+                            nextFocusField.value = settings.focusValue;
+                            nextFocusField.setSelectionRange(settings.focusValue.length, settings.focusValue.length);
+                        }
+                    }
+                }
+            }).catch(function (error) {
+                console.error('Live region update failed', error);
+                window.location.assign(url);
+            }).finally(function () {
+                const restoredRegion = document.querySelector(targetSelector);
+
+                if (restoredRegion) {
+                    restoredRegion.classList.remove('opacity-75');
+                    restoredRegion.style.pointerEvents = '';
+                }
+            });
+        };
+
+        window.appInitLiveRegions = function (scope) {
+            const root = scope || document;
+
+            root.querySelectorAll('.js-live-search-form[data-live-search-target]').forEach(function (form) {
+                if (form.dataset.liveSearchBound === 'true') {
+                    return;
+                }
+
+                form.dataset.liveSearchBound = 'true';
+
+                const input = form.querySelector('.js-live-search-input');
+                let timer = null;
+
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    const action = form.getAttribute('action') || window.location.href;
+                    const targetSelector = form.dataset.liveSearchTarget;
+                    const url = new URL(action, window.location.origin);
+                    const params = new URLSearchParams(window.location.search);
+                    const formData = new FormData(form);
+
+                    formData.forEach(function (value, key) {
+                        if (typeof value !== 'string' || value.trim() === '') {
+                            params.delete(key);
+                            return;
+                        }
+
+                        params.set(key, value);
+                    });
+
+                    params.delete('page');
+                    url.search = params.toString();
+
+                    window.appLoadLiveRegion(targetSelector, url.toString(), {
+                        focusSelector: '.js-live-search-form[data-live-search-target="' + targetSelector + '"] .js-live-search-input',
+                        focusValue: input ? input.value : '',
+                    });
+                });
+
+                if (input) {
+                    input.addEventListener('input', function () {
+                        window.clearTimeout(timer);
+                        timer = window.setTimeout(function () {
+                            form.requestSubmit();
+                        }, 250);
+                    });
+                }
+            });
+
+            root.querySelectorAll('form[data-live-submit-target]').forEach(function (form) {
+                if (form.dataset.liveSubmitBound === 'true') {
+                    return;
+                }
+
+                form.dataset.liveSubmitBound = 'true';
+
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    const action = form.getAttribute('action') || window.location.href;
+                    const targetSelector = form.dataset.liveSubmitTarget;
+                    const url = new URL(action, window.location.origin);
+                    const params = new URLSearchParams(window.location.search);
+                    const formData = new FormData(form);
+
+                    Array.from(params.keys()).forEach(function (key) {
+                        if (form.querySelector('[name="' + key + '"]')) {
+                            params.delete(key);
+                        }
+                    });
+
+                    formData.forEach(function (value, key) {
+                        if (typeof value !== 'string' || value.trim() === '') {
+                            params.delete(key);
+                            return;
+                        }
+
+                        params.append(key, value);
+                    });
+
+                    params.delete('page');
+                    url.search = params.toString();
+
+                    window.appLoadLiveRegion(targetSelector, url.toString());
+                });
+            });
+        };
+
         window.appHandleSessionExpired = function () {
             try {
                 window.sessionStorage.setItem('transport-session-expired', 'true');
@@ -525,6 +682,7 @@
 
             window.appPreserveScroll.restore();
             window.appInitEnhancements(document);
+            window.appInitLiveRegions(document);
 
             if (toasts.length && window.bootstrap && window.bootstrap.Toast) {
                 toasts.forEach(function (toastElement) {
@@ -596,6 +754,57 @@
                     pendingDeleteForm = null;
                 });
             }
+        });
+
+        document.addEventListener('submit', function (event) {
+            const perPageForm = event.target.closest('.table-per-page-form');
+
+            if (!perPageForm) {
+                return;
+            }
+
+            const liveRegion = perPageForm.closest('[data-live-region]');
+
+            if (!liveRegion) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const url = new URL(window.location.href);
+            const formData = new FormData(perPageForm);
+
+            formData.forEach(function (value, key) {
+                if (typeof value !== 'string' || value.trim() === '') {
+                    url.searchParams.delete(key);
+                    return;
+                }
+
+                url.searchParams.set(key, value);
+            });
+
+            url.searchParams.delete('page');
+
+            window.appLoadLiveRegion('#' + liveRegion.id, url.toString());
+        });
+
+        document.addEventListener('click', function (event) {
+            const paginationLink = event.target.closest('.table-pagination-list .page-link');
+
+            if (!paginationLink) {
+                return;
+            }
+
+            const pageItem = paginationLink.closest('.page-item');
+            const liveRegion = paginationLink.closest('[data-live-region]');
+            const href = paginationLink.getAttribute('href');
+
+            if (!liveRegion || !href || href === '#' || (pageItem && pageItem.classList.contains('disabled'))) {
+                return;
+            }
+
+            event.preventDefault();
+            window.appLoadLiveRegion('#' + liveRegion.id, href);
         });
 
         window.appInitEnhancements(document);

@@ -109,7 +109,7 @@ class VehicleController extends Controller
 
     public function store(StoreVehicleRequest $request): RedirectResponse|JsonResponse
     {
-        $vehicle = Vehicle::create($request->validated())->load(['transporter:id,name', 'route:id,route_name']);
+        $vehicle = Vehicle::create($request->validated())->load(['transporter:id,name', 'route:id,route_name,starting_point,ending_point']);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -121,6 +121,8 @@ class VehicleController extends Controller
                     'route_id' => $vehicle->route_id,
                     'transporter_name' => $vehicle->transporter?->name,
                     'route_name' => $vehicle->route?->route_name,
+                    'route_from' => $vehicle->route?->starting_point,
+                    'route_to' => $vehicle->route?->ending_point,
                 ],
             ]);
         }
@@ -195,7 +197,7 @@ class VehicleController extends Controller
             ->with([
                 'transporter:id,name',
                 'vehicleType:id,name',
-                'route:id,route_name',
+                'route:id,route_name,starting_point,ending_point',
             ])
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $search = $filters['search'];
@@ -228,6 +230,8 @@ class VehicleController extends Controller
             'registration_no' => 'Registration No',
             'chassis_no' => 'Chassis No',
             'route' => 'Route',
+            'route_from' => 'Route From',
+            'route_to' => 'Route To',
             'status' => 'Status',
             'remarks' => 'Remarks',
         ];
@@ -250,6 +254,8 @@ class VehicleController extends Controller
             'registration_no' => $vehicle->registration_no ?: '',
             'chassis_no' => $vehicle->chassis_no ?: '',
             'route' => $vehicle->route?->route_name ?: '',
+            'route_from' => $vehicle->route?->starting_point ?: '',
+            'route_to' => $vehicle->route?->ending_point ?: '',
             'status' => Vehicle::STATUSES[$vehicle->status] ?? ucfirst((string) $vehicle->status),
             'remarks' => $vehicle->remarks ?: '',
         ];
