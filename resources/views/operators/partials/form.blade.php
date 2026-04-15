@@ -1,3 +1,10 @@
+@php
+    $isCreateForm = ! ($operator->exists ?? false);
+    $defaultGilgitDistrict = $districts->first(fn ($district) => strtolower((string) $district->name) === 'gilgit');
+    $selectedDistrictId = old('district_id', $operator->district_id ?: ($isCreateForm ? $defaultGilgitDistrict?->id : null));
+    $addressValue = old('address', $operator->address ?: ($isCreateForm ? 'Gilgit' : ''));
+@endphp
+
 <form method="post" action="{{ $formAction }}" id="transporterForm" novalidate>
     @csrf
     @if ($formMethod !== 'post')
@@ -41,14 +48,14 @@
             <select class="form-select @error('district_id') is-invalid @enderror" id="district_id" name="district_id" data-placeholder="Select district" required>
                 <option value="">Select district</option>
                 @foreach ($districts as $district)
-                    <option value="{{ $district->id }}" @selected((string) old('district_id', $operator->district_id) === (string) $district->id)>{{ $district->name }}</option>
+                    <option value="{{ $district->id }}" @selected((string) $selectedDistrictId === (string) $district->id)>{{ $district->name }}</option>
                 @endforeach
             </select>
             @error('district_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6">
             <label class="form-label fw-semibold" for="address">Address <span class="text-danger">*</span></label>
-            <input class="form-control @error('address') is-invalid @enderror" id="address" name="address" placeholder="Enter address" type="text" value="{{ old('address', $operator->address) }}" required>
+            <input class="form-control @error('address') is-invalid @enderror" id="address" name="address" placeholder="Enter address" type="text" value="{{ $addressValue }}" required>
             @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-12 pt-2">
@@ -65,6 +72,10 @@
                 <div class="row g-3">
                     <div class="col-md-6 payment-method-panel" data-payment-panel="easypaisa">
                         <label class="form-label fw-semibold" for="easypaisa_no">EasyPaisa Number</label>
+                        <div class="form-check mt-2 mb-2">
+                            <input class="form-check-input" id="easypaisa_same_as_phone" type="checkbox">
+                            <label class="form-label mb-0" for="easypaisa_same_as_phone">Same as phone number</label>
+                        </div>
                         <input class="form-control @error('easypaisa_no') is-invalid @enderror" id="easypaisa_no" name="easypaisa_no" placeholder="0312-1234567" type="text" inputmode="numeric" maxlength="12" value="{{ old('easypaisa_no', $operator->easypaisa_no) }}">
                         <div class="form-text">Optional mobile wallet number for EasyPaisa transfers.</div>
                         @error('easypaisa_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -113,6 +124,7 @@
             const cnicFieldWrapper = document.getElementById('cnicFieldWrapper');
             const phoneField = document.getElementById('phone');
             const easypaisaField = document.getElementById('easypaisa_no');
+            const easypaisaSameAsPhoneField = document.getElementById('easypaisa_same_as_phone');
             const jazzcashField = document.getElementById('jazzcash_no');
             const ownerTypeField = document.getElementById('owner_type');
             const nameField = document.getElementById('name');
@@ -218,6 +230,17 @@
                 });
             };
 
+            const syncEasypaisaWithPhone = function () {
+                if (!easypaisaField || !easypaisaSameAsPhoneField || !easypaisaSameAsPhoneField.checked) {
+                    return;
+                }
+
+                easypaisaField.value = ownerTypeField && ownerTypeField.value === 'company'
+                    ? ''
+                    : formatPhone(phoneField.value);
+                validateField(easypaisaField);
+            };
+
             const validateField = function (field) {
                 if (field.disabled) {
                     field.classList.remove('is-invalid');
@@ -275,6 +298,9 @@
             if (jazzcashField) {
                 jazzcashField.value = formatPhone(jazzcashField.value);
             }
+            if (easypaisaSameAsPhoneField && easypaisaField && phoneField) {
+                easypaisaSameAsPhoneField.checked = easypaisaField.value !== '' && easypaisaField.value === phoneField.value;
+            }
 
             if (ownerTypeField) {
                 const handleOwnerTypeChange = function () {
@@ -299,12 +325,28 @@
                     ? formatCompanyPhone(phoneField.value)
                     : formatPhone(phoneField.value);
                 validateField(phoneField);
+                syncEasypaisaWithPhone();
             });
 
             if (easypaisaField) {
                 easypaisaField.addEventListener('input', function () {
                     easypaisaField.value = formatPhone(easypaisaField.value);
                     validateField(easypaisaField);
+
+                    if (easypaisaSameAsPhoneField && easypaisaField.value !== phoneField.value) {
+                        easypaisaSameAsPhoneField.checked = false;
+                    }
+                });
+            }
+
+            if (easypaisaSameAsPhoneField) {
+                easypaisaSameAsPhoneField.addEventListener('change', function () {
+                    if (easypaisaSameAsPhoneField.checked) {
+                        syncEasypaisaWithPhone();
+                        return;
+                    }
+
+                    easypaisaField.focus();
                 });
             }
 

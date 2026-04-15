@@ -53,12 +53,13 @@
                     <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                 </button>
                 <div class="collapse {{ request()->routeIs('payments.*') ? 'show' : '' }}" id="desktopPaymentsMenu" data-bs-parent="#desktopSidebarAccordion">
-                    <div class="app-sidebar-submenu">
-                        <a class="app-sidebar-sublink {{ request()->routeIs('payments.due') ? 'active' : '' }}" href="{{ route('payments.due') }}"><i class="fa-solid fa-hourglass-half app-icon"></i> <span class="nav-link-text">Due Payments</span></a>
-                        <a class="app-sidebar-sublink {{ request()->routeIs('payments.paid') ? 'active' : '' }}" href="{{ route('payments.paid') }}"><i class="fa-solid fa-money-check-dollar app-icon"></i> <span class="nav-link-text">Paid</span></a>
-                        <a class="app-sidebar-sublink {{ request()->routeIs('payments.rejected') ? 'active' : '' }}" href="{{ route('payments.rejected') }}"><i class="fa-solid fa-ban app-icon"></i> <span class="nav-link-text">Rejected</span></a>
-                        <a class="app-sidebar-sublink {{ request()->routeIs('payments.index') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-list app-icon"></i> <span class="nav-link-text">All Payments</span></a>
-                    </div>
+                        <div class="app-sidebar-submenu">
+                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.due') ? 'active' : '' }}" href="{{ route('payments.due') }}"><i class="fa-solid fa-hourglass-half app-icon"></i> <span class="nav-link-text">Due Payments</span></a>
+                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.paid') ? 'active' : '' }}" href="{{ route('payments.paid') }}"><i class="fa-solid fa-money-check-dollar app-icon"></i> <span class="nav-link-text">Paid</span></a>
+                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.on-hold') ? 'active' : '' }}" href="{{ route('payments.on-hold') }}"><i class="fa-solid fa-pause app-icon"></i> <span class="nav-link-text">On Hold</span></a>
+                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.rejected') ? 'active' : '' }}" href="{{ route('payments.rejected') }}"><i class="fa-solid fa-ban app-icon"></i> <span class="nav-link-text">Rejected</span></a>
+                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.index') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-list app-icon"></i> <span class="nav-link-text">All Payments</span></a>
+                        </div>
                 </div>
             </li>
             

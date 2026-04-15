@@ -8,6 +8,7 @@ use App\Models\Operator;
 use App\Models\TransportRoute;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -106,9 +107,23 @@ class VehicleController extends Controller
         ]);
     }
 
-    public function store(StoreVehicleRequest $request): RedirectResponse
+    public function store(StoreVehicleRequest $request): RedirectResponse|JsonResponse
     {
-        Vehicle::create($request->validated());
+        $vehicle = Vehicle::create($request->validated())->load(['transporter:id,name', 'route:id,route_name']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Vehicle saved successfully.',
+                'vehicle' => [
+                    'id' => $vehicle->id,
+                    'registration_no' => $vehicle->registration_no,
+                    'transporter_id' => $vehicle->transporter_id,
+                    'route_id' => $vehicle->route_id,
+                    'transporter_name' => $vehicle->transporter?->name,
+                    'route_name' => $vehicle->route?->route_name,
+                ],
+            ]);
+        }
 
         return redirect()->route('vehicles.create')
             ->with('success', 'Vehicle saved successfully.');

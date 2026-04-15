@@ -17,6 +17,40 @@
             margin-top: 0;
             margin-left: 0;
         }
+
+        .trip-inline-action {
+            font-size: 0.78rem;
+            padding: 0.18rem 0.55rem;
+        }
+
+        .trip-quick-modal .modal-content {
+            border-radius: 1rem;
+        }
+
+        .trip-quick-modal .modal-dialog {
+            max-width: 760px;
+        }
+
+        .trip-quick-modal .modal-header,
+        .trip-quick-modal .modal-footer {
+            padding: 0.75rem 1rem;
+        }
+
+        .trip-quick-modal .modal-body {
+            padding: 0.9rem 1rem;
+            max-height: min(70vh, 640px);
+            overflow-y: auto;
+        }
+
+        .trip-quick-modal .form-label {
+            margin-bottom: 0.35rem;
+            font-size: 0.85rem;
+        }
+
+        .trip-quick-modal .form-control,
+        .trip-quick-modal .form-select {
+            font-size: 0.92rem;
+        }
     </style>
 
     <div class="row g-3">
@@ -26,7 +60,10 @@
             @error('trip_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
-            <label class="form-label fw-semibold" for="vehicle_id">Vehicle <span class="text-danger">*</span></label>
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                <label class="form-label fw-semibold mb-0" for="vehicle_id">Vehicle <span class="text-danger">*</span></label>
+                <button class="btn btn-outline-success trip-inline-action" type="button" data-bs-toggle="modal" data-bs-target="#quickVehicleModal">Add Vehicle</button>
+            </div>
             <select class="form-select @error('vehicle_id') is-invalid @enderror" id="vehicle_id" name="vehicle_id" data-placeholder="Select vehicle" required>
                 <option value="">Select vehicle</option>
                 @foreach ($vehicles as $vehicle)
@@ -72,7 +109,10 @@
             @error('route_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
-            <label class="form-label fw-semibold" for="transporter_id">Transporter <span class="text-danger">*</span></label>
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                <label class="form-label fw-semibold mb-0" for="transporter_id">Transporter <span class="text-danger">*</span></label>
+                <button class="btn btn-outline-success trip-inline-action" type="button" data-bs-toggle="modal" data-bs-target="#quickTransporterModal">Add Transporter</button>
+            </div>
             <select class="form-select @error('transporter_id') is-invalid @enderror" id="transporter_id" name="transporter_id" data-placeholder="Select transporter" required>
                 <option value="">Select transporter</option>
                 @foreach ($transporters as $transporter)
@@ -130,12 +170,12 @@
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="fare_amount">Fare Amount <span class="text-danger">*</span></label>
-            <input class="form-control @error('fare_amount') is-invalid @enderror" id="fare_amount" name="fare_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('fare_amount', $trip->fare_amount) }}" required readonly>
+            <input class="form-control @error('fare_amount') is-invalid @enderror" id="fare_amount" name="fare_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('fare_amount', $trip->fare_amount) }}" required>
             @error('fare_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="total_amount">Total Amount <span class="text-danger">*</span></label>
-            <input class="form-control @error('total_amount') is-invalid @enderror" id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('total_amount', $trip->total_amount) }}" required readonly>
+            <input class="form-control @error('total_amount') is-invalid @enderror" id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('total_amount', $trip->total_amount) }}" required>
             @error('total_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
@@ -160,6 +200,137 @@
         </div>
     </div>
 </form>
+
+<div class="modal fade trip-quick-modal" id="quickTransporterModal" tabindex="-1" aria-labelledby="quickTransporterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="quickTransporterForm" action="{{ route('transporters.store') }}" method="post" novalidate>
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickTransporterModalLabel">Add Transporter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_owner_type">Owner Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="quick_owner_type" name="owner_type" required>
+                                @foreach ($ownerTypes as $value => $label)
+                                    <option value="{{ $value }}" @selected($value === 'private')>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_transporter_name" id="quickTransporterNameLabel">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" id="quick_transporter_name" name="name" type="text" placeholder="Enter transporter name" required>
+                        </div>
+                        <div class="col-12" id="quickTransporterCnicWrapper">
+                            <label class="form-label fw-semibold" for="quick_transporter_cnic" id="quickTransporterCnicLabel">CNIC <span class="text-danger">*</span></label>
+                            <input class="form-control" id="quick_transporter_cnic" name="cnic" type="text" inputmode="numeric" maxlength="15" placeholder="12345-1234567-1">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_transporter_phone">Phone <span class="text-danger">*</span></label>
+                            <input class="form-control" id="quick_transporter_phone" name="phone" type="text" inputmode="numeric" maxlength="12" placeholder="0312-1234567" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_transporter_district">District <span class="text-danger">*</span></label>
+                            <select class="form-select" id="quick_transporter_district" name="district_id" required>
+                                <option value="">Select district</option>
+                                @foreach ($districts as $district)
+                                    <option value="{{ $district->id }}" @selected(strtolower((string) $district->name) === 'gilgit')>{{ $district->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_transporter_address">Address <span class="text-danger">*</span></label>
+                            <input class="form-control" id="quick_transporter_address" name="address" type="text" value="Gilgit" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_transporter_easypaisa">EasyPaisa Number</label>
+                            <div class="form-check mt-2">
+                                <label class="form-label" for="quick_transporter_easypaisa_same_as_phone">Same as phone number</label>
+                                <input class="form-check-input" id="quick_transporter_easypaisa_same_as_phone" type="checkbox">
+                            </div>
+                            <input class="form-control" id="quick_transporter_easypaisa" name="easypaisa_no" type="text" inputmode="numeric" maxlength="12" placeholder="0312-1234567">
+                            
+                            <div class="form-text">Optional mobile wallet number for EasyPaisa transfers.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_transporter_remarks">Remarks</label>
+                            <textarea class="form-control" id="quick_transporter_remarks" name="remarks" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" type="submit">Save Transporter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade trip-quick-modal" id="quickVehicleModal" tabindex="-1" aria-labelledby="quickVehicleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="quickVehicleForm" action="{{ route('vehicles.store') }}" method="post" novalidate>
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickVehicleModalLabel">Add Vehicle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_vehicle_transporter_id">Transporter</label>
+                            <select class="form-select" id="quick_vehicle_transporter_id" name="transporter_id" required>
+                                <option value="">Select transporter</option>
+                                @foreach ($transporters as $transporter)
+                                    <option value="{{ $transporter->id }}">{{ $transporter->name }}{{ $transporter->cnic ? ' - '.$transporter->cnic : '' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <input id="quick_vehicle_status" name="status" type="hidden" value="active">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_vehicle_type">Vehicle Type</label>
+                            <select class="form-select" id="quick_vehicle_type" name="vehicle_type" required>
+                                <option value="">Select vehicle type</option>
+                                @foreach ($vehicleTypes as $vehicleType)
+                                    <option value="{{ $vehicleType->id }}" @selected(strtolower((string) $vehicleType->name) === 'suzuki pick up')>{{ $vehicleType->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_registration_no">Registration No</label>
+                            <input class="form-control" id="quick_registration_no" name="registration_no" type="text" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_chassis_no">Chassis No</label>
+                            <input class="form-control" id="quick_chassis_no" name="chassis_no" type="text">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_vehicle_route_id">Route</label>
+                            <select class="form-select" id="quick_vehicle_route_id" name="route_id" required>
+                                <option value="">Select route</option>
+                                @foreach ($routes as $route)
+                                    <option value="{{ $route->id }}">{{ $route->route_name }} ({{ $route->starting_point }} → {{ $route->ending_point }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="quick_vehicle_remarks">Remarks</label>
+                            <textarea class="form-control" id="quick_vehicle_remarks" name="remarks" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" type="submit">Save Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 @push('scripts')
     <script>
@@ -189,7 +360,51 @@
             const cnicRequiredMarker = document.getElementById('driver_cnic_required');
             const vehicleDetailsUrl = form.dataset.vehicleDetailsUrl;
             const routeDetailsUrl = form.dataset.routeDetailsUrl;
+            const quickTransporterForm = document.getElementById('quickTransporterForm');
+            const quickVehicleForm = document.getElementById('quickVehicleForm');
+            const quickTransporterModalElement = document.getElementById('quickTransporterModal');
+            const quickVehicleModalElement = document.getElementById('quickVehicleModal');
+            const quickTransporterOwnerTypeField = document.getElementById('quick_owner_type');
+            const quickTransporterCnicWrapper = document.getElementById('quickTransporterCnicWrapper');
+            const quickTransporterCnicField = document.getElementById('quick_transporter_cnic');
+            const quickTransporterNameField = document.getElementById('quick_transporter_name');
+            const quickTransporterNameLabel = document.getElementById('quickTransporterNameLabel');
+            const quickTransporterPhoneField = document.getElementById('quick_transporter_phone');
+            const quickTransporterDistrictField = document.getElementById('quick_transporter_district');
+            const quickTransporterAddressField = document.getElementById('quick_transporter_address');
+            const quickTransporterEasypaisaField = document.getElementById('quick_transporter_easypaisa');
+            const quickTransporterEasypaisaSameAsPhoneField = document.getElementById('quick_transporter_easypaisa_same_as_phone');
+            const quickVehicleTransporterField = document.getElementById('quick_vehicle_transporter_id');
             let baseFareAmount = Number(fareAmountField.value || 0);
+
+            [quickTransporterModalElement, quickVehicleModalElement].forEach(function (modalElement) {
+                if (modalElement && modalElement.parentElement !== document.body) {
+                    document.body.appendChild(modalElement);
+                }
+            });
+
+            const initModalSelect2 = function (modalElement, fields) {
+                if (!modalElement || !window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
+                    return;
+                }
+
+                fields.forEach(function (field) {
+                    if (!field) {
+                        return;
+                    }
+
+                    const select = window.jQuery(field);
+
+                    if (select.hasClass('select2-hidden-accessible')) {
+                        select.select2('destroy');
+                    }
+
+                    select.select2({
+                        width: '100%',
+                        dropdownParent: window.jQuery(modalElement),
+                    });
+                });
+            };
 
             const setSelectValue = function (field, value) {
                 if (!field) {
@@ -209,6 +424,145 @@
                 transporterHiddenField.value = transporterField.value;
                 districtHiddenField.value = districtField.value;
                 fareHiddenField.value = fareField.value;
+            };
+
+            const upsertSelectOption = function (field, optionValue, optionLabel, selected, dataAttributes) {
+                if (!field) {
+                    return;
+                }
+
+                const normalizedValue = String(optionValue);
+                let option = Array.from(field.options).find(function (item) {
+                    return item.value === normalizedValue;
+                });
+
+                if (!option) {
+                    option = document.createElement('option');
+                    option.value = normalizedValue;
+                    field.appendChild(option);
+                }
+
+                option.textContent = optionLabel;
+
+                Object.entries(dataAttributes || {}).forEach(function (entry) {
+                    option.dataset[entry[0]] = entry[1];
+                });
+
+                if (selected) {
+                    field.value = normalizedValue;
+
+                    if (window.jQuery) {
+                        window.jQuery(field).trigger('change');
+                    }
+                }
+            };
+
+            const clearAjaxErrors = function (ajaxForm) {
+                ajaxForm.querySelectorAll('.is-invalid').forEach(function (field) {
+                    field.classList.remove('is-invalid');
+                });
+
+                ajaxForm.querySelectorAll('.ajax-invalid-feedback').forEach(function (feedback) {
+                    feedback.remove();
+                });
+            };
+
+            const showAjaxErrors = function (ajaxForm, errors) {
+                Object.entries(errors || {}).forEach(function (entry) {
+                    const fieldName = entry[0];
+                    const messages = entry[1];
+                    const field = ajaxForm.querySelector('[name="' + fieldName + '"]');
+
+                    if (!field) {
+                        return;
+                    }
+
+                    field.classList.add('is-invalid');
+
+                    const feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback ajax-invalid-feedback d-block';
+                    feedback.textContent = Array.isArray(messages) ? messages[0] : messages;
+                    field.parentElement.appendChild(feedback);
+                });
+            };
+
+            const submitQuickForm = function (ajaxForm, onSuccess) {
+                clearAjaxErrors(ajaxForm);
+
+                fetch(ajaxForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: new FormData(ajaxForm),
+                }).then(function (response) {
+                    if (!response.ok) {
+                        return response.json().then(function (data) {
+                            throw data;
+                        });
+                    }
+
+                    return response.json();
+                }).then(function (data) {
+                    onSuccess(data);
+                }).catch(function (error) {
+                    if (error && error.errors) {
+                        showAjaxErrors(ajaxForm, error.errors);
+                        return;
+                    }
+
+                    console.error('Quick form submission failed', error);
+                });
+            };
+
+            const showAppToast = function (title, message, type) {
+                if (!window.bootstrap || !window.bootstrap.Toast) {
+                    return;
+                }
+
+                let container = document.querySelector('.qas-toast-container[data-dynamic-toast-container]');
+
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'toast-container qas-toast-container position-fixed top-0 end-0 p-3';
+                    container.dataset.dynamicToastContainer = 'true';
+                    document.body.appendChild(container);
+                }
+
+                const toastElement = document.createElement('div');
+                const isError = type === 'error';
+
+                toastElement.className = 'toast qas-toast border-0 fade hide ' + (isError ? 'qas-toast-error' : 'qas-toast-success');
+                toastElement.setAttribute('role', 'alert');
+                toastElement.setAttribute('aria-live', 'assertive');
+                toastElement.setAttribute('aria-atomic', 'true');
+                toastElement.setAttribute('data-bs-autohide', 'true');
+                toastElement.setAttribute('data-bs-delay', '6000');
+
+                toastElement.innerHTML = `
+                    <div class="toast-header">
+                        <span class="qas-toast-dot ${isError ? 'qas-toast-dot-error' : ''}">
+                            <i class="fa-solid ${isError ? 'fa-circle-exclamation' : 'fa-check'} app-icon"></i>
+                        </span>
+                        <strong class="me-auto">${title}</strong>
+                        <small>Now</small>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">${message}</div>
+                `;
+
+                container.appendChild(toastElement);
+
+                const toastInstance = window.bootstrap.Toast.getOrCreateInstance(toastElement);
+                toastElement.addEventListener('hidden.bs.toast', function () {
+                    toastElement.remove();
+
+                    if (!container.children.length) {
+                        container.remove();
+                    }
+                }, { once: true });
+                toastInstance.show();
             };
 
             const getSelectedTransporterOwnerType = function () {
@@ -239,8 +593,6 @@
             };
 
             const setAutoFilledFieldState = function () {
-                const isLocked = !!vehicleField.value;
-
                 [
                     [routeField, routeHiddenField],
                     [transporterField, transporterHiddenField],
@@ -250,19 +602,19 @@
                     const field = pair[0];
                     const hiddenField = pair[1];
 
-                    field.disabled = isLocked;
-                    field.classList.toggle('bg-light', isLocked);
-                    hiddenField.disabled = !isLocked;
+                    field.disabled = false;
+                    field.classList.remove('bg-light');
+                    hiddenField.disabled = true;
                 });
 
-                fareAmountField.readOnly = true;
-                totalAmountField.readOnly = true;
-                driverNameField.readOnly = isLocked;
-                cnicField.readOnly = isLocked;
-                mobileField.readOnly = isLocked;
+                fareAmountField.readOnly = false;
+                totalAmountField.readOnly = false;
+                driverNameField.readOnly = false;
+                cnicField.readOnly = false;
+                mobileField.readOnly = false;
 
                 [driverNameField, cnicField, mobileField, fareAmountField, totalAmountField].forEach(function (field) {
-                    field.classList.toggle('bg-light', isLocked);
+                    field.classList.remove('bg-light');
                 });
 
                 syncHiddenFields();
@@ -303,6 +655,26 @@
                     digits.slice(4, 11),
                 ].filter(Boolean).join('-');
             };
+
+            const formatCompanyPhone = function (value) {
+                const digits = value.replace(/\D/g, '').slice(0, 11);
+
+                return [
+                    digits.slice(0, 5),
+                    digits.slice(5, 11),
+                ].filter(Boolean).join('-');
+            };
+
+            initModalSelect2(quickTransporterModalElement, [
+                document.getElementById('quick_owner_type'),
+                document.getElementById('quick_transporter_district'),
+            ]);
+
+            initModalSelect2(quickVehicleModalElement, [
+                document.getElementById('quick_vehicle_transporter_id'),
+                document.getElementById('quick_vehicle_type'),
+                document.getElementById('quick_vehicle_route_id'),
+            ]);
 
             const syncFareValues = function () {
                 if (!fareField.value || !baseFareAmount) {
@@ -428,6 +800,84 @@
             cnicField.value = formatCnic(cnicField.value);
             mobileField.value = formatMobile(mobileField.value);
 
+            const syncQuickTransporterEasypaisaWithPhone = function () {
+                if (quickTransporterEasypaisaSameAsPhoneField && quickTransporterEasypaisaSameAsPhoneField.checked && quickTransporterEasypaisaField && quickTransporterPhoneField) {
+                    quickTransporterEasypaisaField.value = quickTransporterPhoneField.value;
+                }
+            };
+
+            if (quickTransporterOwnerTypeField && quickTransporterCnicField && quickTransporterPhoneField) {
+                const syncQuickTransporterOwnerType = function () {
+                    const isCompany = quickTransporterOwnerTypeField.value === 'company';
+
+                    if (quickTransporterNameLabel) {
+                        quickTransporterNameLabel.innerHTML = (isCompany ? 'Company Name' : 'Name') + ' <span class="text-danger">*</span>';
+                    }
+
+                    if (quickTransporterNameField) {
+                        quickTransporterNameField.placeholder = isCompany ? 'Enter company name' : 'Enter transporter name';
+                    }
+
+                    if (quickTransporterCnicWrapper) {
+                        quickTransporterCnicWrapper.classList.toggle('d-none', isCompany);
+                    }
+
+                    quickTransporterCnicField.disabled = isCompany;
+                    quickTransporterCnicField.required = !isCompany;
+
+                    if (isCompany) {
+                        quickTransporterCnicField.value = '';
+                        quickTransporterCnicField.classList.remove('is-invalid');
+                        const feedback = quickTransporterCnicField.parentElement.querySelector('.ajax-invalid-feedback');
+
+                        if (feedback) {
+                            feedback.remove();
+                        }
+
+                        quickTransporterPhoneField.placeholder = '05811-920792';
+                        quickTransporterPhoneField.value = formatCompanyPhone(quickTransporterPhoneField.value);
+                    } else {
+                        quickTransporterPhoneField.placeholder = '0312-1234567';
+                        quickTransporterPhoneField.value = formatMobile(quickTransporterPhoneField.value);
+                    }
+
+                    syncQuickTransporterEasypaisaWithPhone();
+                };
+
+                quickTransporterOwnerTypeField.addEventListener('change', syncQuickTransporterOwnerType);
+                if (window.jQuery) {
+                    window.jQuery(quickTransporterOwnerTypeField).on('change.select2', syncQuickTransporterOwnerType);
+                }
+                quickTransporterCnicField.addEventListener('input', function () {
+                    quickTransporterCnicField.value = formatCnic(quickTransporterCnicField.value);
+                });
+                quickTransporterPhoneField.addEventListener('input', function () {
+                    quickTransporterPhoneField.value = quickTransporterOwnerTypeField.value === 'company'
+                        ? formatCompanyPhone(quickTransporterPhoneField.value)
+                        : formatMobile(quickTransporterPhoneField.value);
+                    syncQuickTransporterEasypaisaWithPhone();
+                });
+                if (quickTransporterEasypaisaField) {
+                    quickTransporterEasypaisaField.addEventListener('input', function () {
+                        quickTransporterEasypaisaField.value = formatMobile(quickTransporterEasypaisaField.value);
+                    });
+                }
+                if (quickTransporterEasypaisaSameAsPhoneField) {
+                    quickTransporterEasypaisaSameAsPhoneField.addEventListener('change', function () {
+                        if (quickTransporterEasypaisaSameAsPhoneField.checked) {
+                            syncQuickTransporterEasypaisaWithPhone();
+                        }
+                    });
+                }
+
+                quickTransporterCnicField.value = formatCnic(quickTransporterCnicField.value);
+                quickTransporterPhoneField.value = formatMobile(quickTransporterPhoneField.value);
+                if (quickTransporterEasypaisaField) {
+                    quickTransporterEasypaisaField.value = formatMobile(quickTransporterEasypaisaField.value);
+                }
+                syncQuickTransporterOwnerType();
+            }
+
             cnicField.addEventListener('input', function () {
                 cnicField.value = formatCnic(cnicField.value);
                 validateField(cnicField);
@@ -437,6 +887,68 @@
                 mobileField.value = formatMobile(mobileField.value);
                 validateField(mobileField);
             });
+
+            if (quickTransporterForm) {
+                quickTransporterForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    submitQuickForm(quickTransporterForm, function (data) {
+                        const operator = data.operator;
+                        const optionLabel = operator.name + (operator.cnic ? ' - ' + operator.cnic : '');
+
+                        upsertSelectOption(transporterField, operator.id, operator.name, true, {
+                            ownerType: operator.owner_type || '',
+                        });
+                        upsertSelectOption(quickVehicleTransporterField, operator.id, optionLabel, true, {});
+                        updateDriverCnicState(operator.owner_type || '');
+                        clearAjaxErrors(quickTransporterForm);
+                        quickTransporterForm.reset();
+                        quickTransporterOwnerTypeField.value = 'private';
+                        quickTransporterOwnerTypeField.dispatchEvent(new Event('change'));
+                        if (quickTransporterDistrictField) {
+                            const defaultDistrict = Array.from(quickTransporterDistrictField.options).find(function (option) {
+                                return option.defaultSelected;
+                            });
+
+                            quickTransporterDistrictField.value = defaultDistrict ? defaultDistrict.value : '';
+
+                            if (window.jQuery) {
+                                window.jQuery(quickTransporterDistrictField).trigger('change');
+                            }
+                        }
+                        if (quickTransporterAddressField) {
+                            quickTransporterAddressField.value = quickTransporterAddressField.defaultValue;
+                        }
+                        if (quickTransporterEasypaisaSameAsPhoneField) {
+                            quickTransporterEasypaisaSameAsPhoneField.checked = false;
+                        }
+                        if (window.bootstrap) {
+                            window.bootstrap.Modal.getOrCreateInstance(quickTransporterModalElement).hide();
+                        }
+                        showAppToast('Success', data.message || 'Transporter saved successfully.', 'success');
+                    });
+                });
+            }
+
+            if (quickVehicleForm) {
+                quickVehicleForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    submitQuickForm(quickVehicleForm, function (data) {
+                        const vehicle = data.vehicle;
+
+                        upsertSelectOption(vehicleField, vehicle.id, vehicle.registration_no, true, {});
+                        clearAjaxErrors(quickVehicleForm);
+                        quickVehicleForm.reset();
+                        document.getElementById('quick_vehicle_status').value = 'active';
+                        if (window.bootstrap) {
+                            window.bootstrap.Modal.getOrCreateInstance(quickVehicleModalElement).hide();
+                        }
+                        syncFromVehicle();
+                        showAppToast('Success', data.message || 'Vehicle saved successfully.', 'success');
+                    });
+                });
+            }
 
             if (window.jQuery) {
                 window.jQuery(routeField).on('change', function () {

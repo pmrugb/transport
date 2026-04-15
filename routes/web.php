@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/payments/due', [PaymentController::class, 'due'])->name('payments.due');
     Route::get('/payments/approved', [PaymentController::class, 'approved'])->name('payments.approved');
     Route::get('/payments/paid', [PaymentController::class, 'paid'])->name('payments.paid');
+    Route::get('/payments/on-hold', [PaymentController::class, 'onHold'])->name('payments.on-hold');
     Route::get('/payments/rejected', [PaymentController::class, 'rejected'])->name('payments.rejected');
     Route::get('/payments/export/csv', [PaymentController::class, 'exportCsv'])->name('payments.export.csv');
     Route::get('/payments/export/excel', [PaymentController::class, 'exportExcel'])->name('payments.export.excel');
@@ -65,6 +66,7 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/payments/bulk-approve', [PaymentController::class, 'bulkApprove'])->name('payments.bulk-approve');
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
     Route::patch('/payments/{payment}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
+    Route::patch('/payments/{payment}/hold', [PaymentController::class, 'hold'])->name('payments.hold');
     Route::patch('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');

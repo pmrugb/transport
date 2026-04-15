@@ -71,6 +71,7 @@
                         <div class="app-sidebar-submenu">
                             <a class="app-sidebar-sublink {{ request()->routeIs('payments.due') ? 'active' : '' }}" href="{{ route('payments.due') }}">Due Payments</a>
                             <a class="app-sidebar-sublink {{ request()->routeIs('payments.paid') ? 'active' : '' }}" href="{{ route('payments.paid') }}">Paid</a>
+                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.on-hold') ? 'active' : '' }}" href="{{ route('payments.on-hold') }}">On Hold</a>
                             <a class="app-sidebar-sublink {{ request()->routeIs('payments.rejected') ? 'active' : '' }}" href="{{ route('payments.rejected') }}">Rejected</a>
                             <a class="app-sidebar-sublink {{ request()->routeIs('payments.index') ? 'active' : '' }}" href="{{ route('payments.index') }}">All Payments</a>
                         </div>

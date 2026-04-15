@@ -26,6 +26,7 @@ class TripCost extends Model
     public const STATUSES = [
         'due' => 'Due Payment',
         'paid' => 'Paid',
+        'on_hold' => 'On Hold',
         'rejected' => 'Rejected',
     ];
 

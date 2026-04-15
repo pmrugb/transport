@@ -1,6 +1,15 @@
 @extends('layouts.app', ['title' => $pageHeading.' | Free Public Transport System', 'pageBadge' => 'Payments'])
 
 @section('content')
+    @php
+        $currentStatusRoute = match ($currentStatus) {
+            'due' => 'payments.due',
+            'paid' => 'payments.paid',
+            'on_hold' => 'payments.on-hold',
+            'rejected' => 'payments.rejected',
+            default => 'payments.index',
+        };
+    @endphp
     <style>
         .payment-export-card {
             border-radius: 1rem;
@@ -111,6 +120,97 @@
             margin-bottom: 0;
         }
 
+        .payment-status-modal .modal-dialog {
+            max-width: 440px;
+        }
+
+        .payment-status-modal .modal-content {
+            border: 0;
+            border-radius: 1.1rem;
+            overflow: hidden;
+            box-shadow: 0 28px 56px rgba(32, 52, 84, 0.18);
+        }
+
+        .payment-status-modal .modal-header {
+            padding: 0.9rem 1rem 0.55rem;
+            border-bottom: 0;
+        }
+
+        .payment-status-modal .modal-title {
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #203454;
+        }
+
+        .payment-status-modal .modal-body {
+            padding: 0 1rem 0.95rem;
+        }
+
+        .payment-status-modal .modal-footer {
+            padding: 0.75rem 1rem 1rem;
+            border-top: 0;
+            gap: 0.55rem;
+        }
+
+        .payment-status-modal .btn-close {
+            transform: scale(0.85);
+            opacity: 0.7;
+        }
+
+        .payment-status-help {
+            font-size: 0.8rem;
+            line-height: 1.45;
+            color: #6b7a8f;
+            margin-bottom: 0.75rem;
+        }
+
+        .payment-status-modal .form-label {
+            font-size: 0.8rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .payment-status-modal .form-control {
+            min-height: 108px;
+            resize: none;
+            border-radius: 0.9rem;
+            font-size: 0.84rem;
+            line-height: 1.45;
+            padding: 0.8rem 0.9rem;
+        }
+
+        .payment-status-modal .btn {
+            border-radius: 0.8rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.6rem 0.95rem;
+        }
+
+        .payment-table-search {
+            max-width: 320px;
+            margin-top: 0.85rem;
+        }
+
+        .payment-table-search .input-group-text {
+            border-radius: 0.85rem 0 0 0.85rem;
+            background: #f4f7fb;
+            border-color: #dbe4ee;
+            color: #6b7a8f;
+            font-size: 0.82rem;
+        }
+
+        .payment-table-search .form-control {
+            border-radius: 0 0.85rem 0.85rem 0;
+            border-color: #dbe4ee;
+            min-height: 40px;
+            font-size: 0.84rem;
+        }
+
+        .payment-table-search-note {
+            margin-top: 0.35rem;
+            font-size: 0.76rem;
+            color: #7a8799;
+        }
+
         @media (max-width: 767.98px) {
             .payment-export-actions,
             .payment-filter-actions {
@@ -133,6 +233,7 @@
         <div class="d-flex flex-wrap gap-2">
             <a class="btn {{ $currentStatus === 'due' ? 'btn-success' : 'btn-outline-secondary' }}" href="{{ route('payments.due') }}">Due</a>
             <a class="btn {{ $currentStatus === 'paid' ? 'btn-success' : 'btn-outline-secondary' }}" href="{{ route('payments.paid') }}">Paid</a>
+            <a class="btn {{ $currentStatus === 'on_hold' ? 'btn-success' : 'btn-outline-secondary' }}" href="{{ route('payments.on-hold') }}">On Hold</a>
             <a class="btn {{ $currentStatus === 'rejected' ? 'btn-success' : 'btn-outline-secondary' }}" href="{{ route('payments.rejected') }}">Rejected</a>
             <a class="btn {{ $currentStatus === 'all' ? 'btn-success' : 'btn-outline-secondary' }}" href="{{ route('payments.index') }}">All</a>
         </div>
@@ -171,12 +272,12 @@
                         <h3 class="payment-filter-title">Filters</h3>
                         <div class="payment-filter-actions">
                             <button class="btn btn-success" form="paymentFilters" type="submit"><i class="fa-solid fa-filter me-2"></i>Apply Filters</button>
-                            <a class="btn btn-outline-secondary" href="{{ route($currentStatus === 'all' ? 'payments.index' : 'payments.'.$currentStatus) }}"><i class="fa-solid fa-rotate-right me-2"></i>Reset</a>
+                            <a class="btn btn-outline-secondary" href="{{ route($currentStatusRoute) }}"><i class="fa-solid fa-rotate-right me-2"></i>Reset</a>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
-                    <form method="get" action="{{ route($currentStatus === 'all' ? 'payments.index' : 'payments.'.$currentStatus) }}" id="paymentFilters">
+                    <form method="get" action="{{ route($currentStatusRoute) }}" id="paymentFilters">
                         <div class="row payment-filter-grid">
                             <div class="col-md-2">
                                 <label class="form-label fw-semibold" for="status">Status</label>
@@ -201,7 +302,7 @@
                                 <select class="form-select" id="transporter_id" name="transporter_id">
                                     <option value="">All transporters</option>
                                     @foreach ($transporters as $transporter)
-                                        <option value="{{ $transporter->id }}" @selected((string) $filters['transporter_id'] === (string) $transporter->id)>{{ $transporter->name }}</option>
+                                        <option value="{{ $transporter->id }}" @selected((string) $filters['transporter_id'] === (string) $transporter->id)>{{ $transporter->name }}{{ $transporter->cnic ? ' - '.$transporter->cnic : '' }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -210,7 +311,7 @@
                                 <select class="form-select" id="route_id" name="route_id">
                                     <option value="">All routes</option>
                                     @foreach ($routes as $route)
-                                        <option value="{{ $route->id }}" @selected((string) $filters['route_id'] === (string) $route->id)>{{ $route->route_name }}</option>
+                                        <option value="{{ $route->id }}" @selected((string) $filters['route_id'] === (string) $route->id)>{{ $route->route_name }} ({{ $route->starting_point }} → {{ $route->ending_point }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -234,6 +335,13 @@
                         <div>
                             <h3 class="section-title">Payment Records</h3>
                             <p class="section-copy">Transporter payment entries generated from saved trip activity.</p>
+                            <div class="payment-table-search">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fa-solid fa-id-card"></i></span>
+                                    <input class="form-control" id="paymentCnicSearch" type="text" placeholder="Search by transporter CNIC" autocomplete="off">
+                                </div>
+                                
+                            </div>
                         </div>
                         @if ($canManagePayments)
                             <div class="d-flex flex-wrap gap-2">
@@ -272,7 +380,7 @@
                             </thead>
                             <tbody>
                                 @forelse ($payments as $payment)
-                                    <tr>
+                                    <tr data-transporter-cnic="{{ $payment->transporter?->cnic ?: '' }}">
                                         @if ($canManagePayments)
                                             <td class="text-center">
                                                 @if ($payment->status === 'due')
@@ -295,29 +403,60 @@
                                         <td>{{ $payment->no_of_trips }}</td>
                                         <td>{{ number_format((float) $payment->fare_amount, 2) }}</td>
                                         <td>{{ number_format((float) $payment->total_amount, 2) }}</td>
-                                        <td><span class="{{ $statusBadges[$payment->status] ?? 'badge-soft-muted' }}">{{ $statuses[$payment->status] ?? ucfirst($payment->status) }}</span></td>
+                                        <td>
+                                            <span class="{{ $statusBadges[$payment->status] ?? 'badge-soft-muted' }}">{{ $statuses[$payment->status] ?? ucfirst($payment->status) }}</span>
+                                            @if (in_array($payment->status, ['on_hold', 'rejected'], true) && filled($payment->remarks))
+                                                <div class="small text-muted mt-1">{{ $payment->remarks }}</div>
+                                            @endif
+                                        </td>
                                         <td class="text-center text-nowrap">
                                             <div class="action-stack justify-content-center">
-                                                <a href="{{ route('payments.show', $payment) }}" class="action-btn btn-view" title="View Payment">
+                                                <a href="{{ route('payments.show', $payment) }}" class="action-btn btn-view" data-bs-toggle="tooltip" data-bs-placement="top" title="View Payment" aria-label="View Payment">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                @if ($canManagePayments && $payment->status === 'due')
+                                                @if ($canManagePayments && in_array($payment->status, ['due', 'on_hold'], true))
                                                     <form method="POST" action="{{ route('payments.approve', $payment) }}" class="d-inline">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="action-btn btn-approve border-0" title="Approve Payment">
+                                                        <button type="submit" class="action-btn btn-approve border-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Approve Payment" aria-label="Approve Payment">
                                                             <i class="fa-solid fa-check"></i>
                                                         </button>
                                                     </form>
                                                 @endif
                                                 @if ($canManagePayments && $payment->status === 'due')
-                                                    <form method="POST" action="{{ route('payments.reject', $payment) }}" class="d-inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="submit" class="action-btn btn-reject border-0" title="Reject Payment">
-                                                            <i class="fa-solid fa-xmark"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button
+                                                        type="button"
+                                                        class="action-btn border-0"
+                                                        style="background:#e8f4fd;color:#0c63e7;"
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="Put Payment On Hold"
+                                                        aria-label="Put Payment On Hold"
+                                                        data-bs-target="#paymentStatusReasonModal"
+                                                        data-bs-toggle-modal="modal"
+                                                        data-payment-action="hold"
+                                                        data-payment-id="{{ $payment->id }}"
+                                                        data-payment-transporter="{{ $payment->transporter?->name ?: 'N/A' }}"
+                                                    >
+                                                        <i class="fa-solid fa-pause"></i>
+                                                    </button>
+                                                @endif
+                                                @if ($canManagePayments && in_array($payment->status, ['due', 'on_hold'], true))
+                                                    <button
+                                                        type="button"
+                                                        class="action-btn btn-reject border-0"
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="Reject Payment"
+                                                        aria-label="Reject Payment"
+                                                        data-bs-target="#paymentStatusReasonModal"
+                                                        data-bs-toggle-modal="modal"
+                                                        data-payment-action="reject"
+                                                        data-payment-id="{{ $payment->id }}"
+                                                        data-payment-transporter="{{ $payment->transporter?->name ?: 'N/A' }}"
+                                                    >
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
                                                 @endif
                                             </div>
                                         </td>
@@ -334,6 +473,32 @@
             </div>
         </div>
     </section>
+
+    <div class="modal fade payment-status-modal" id="paymentStatusReasonModal" tabindex="-1" aria-labelledby="paymentStatusReasonModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" id="paymentStatusReasonForm" novalidate>
+                    @csrf
+                    @method('PATCH')
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="paymentStatusReasonModalLabel">Update Payment Status</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="payment-status-help" id="paymentStatusReasonHelp">Add a reason for this status update.</p>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold" for="payment_status_reason">Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="payment_status_reason" name="reason" rows="4" placeholder="Write the reason here..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn btn-success" type="submit" id="paymentStatusReasonSubmit">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -341,33 +506,87 @@
         (function () {
             var selectAll = document.querySelector('.js-select-all-payments');
             var itemSelector = '.js-payment-checkbox';
+            var tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            var modalElement = document.getElementById('paymentStatusReasonModal');
+            var modalForm = document.getElementById('paymentStatusReasonForm');
+            var modalTitle = document.getElementById('paymentStatusReasonModalLabel');
+            var modalHelp = document.getElementById('paymentStatusReasonHelp');
+            var modalReasonField = document.getElementById('payment_status_reason');
+            var modalSubmitButton = document.getElementById('paymentStatusReasonSubmit');
+            var holdActionBaseUrl = @json(url('/payments/__PAYMENT__/hold'));
+            var rejectActionBaseUrl = @json(url('/payments/__PAYMENT__/reject'));
+            var cnicSearchField = document.getElementById('paymentCnicSearch');
+            var paymentRows = Array.from(document.querySelectorAll('table.table-app tbody tr[data-transporter-cnic]'));
 
-            if (!selectAll) {
-                return;
+            if (window.bootstrap && window.bootstrap.Tooltip) {
+                tooltipElements.forEach(function (element) {
+                    window.bootstrap.Tooltip.getOrCreateInstance(element);
+                });
             }
 
-            var syncSelectAll = function () {
-                var checkboxes = Array.from(document.querySelectorAll(itemSelector));
-                var checkedCount = checkboxes.filter(function (checkbox) {
-                    return checkbox.checked;
-                }).length;
+            if (cnicSearchField) {
+                cnicSearchField.addEventListener('keyup', function () {
+                    var query = cnicSearchField.value.trim().toLowerCase().replace(/\s+/g, '');
 
-                selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
-                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-            };
-
-            selectAll.addEventListener('change', function () {
-                document.querySelectorAll(itemSelector).forEach(function (checkbox) {
-                    checkbox.checked = selectAll.checked;
+                    paymentRows.forEach(function (row) {
+                        var cnic = (row.getAttribute('data-transporter-cnic') || '').toLowerCase().replace(/\s+/g, '');
+                        row.classList.toggle('d-none', query !== '' && cnic.indexOf(query) === -1);
+                    });
                 });
+            }
+
+            document.querySelectorAll('[data-bs-toggle-modal="modal"]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    if (!modalElement || !modalForm || !modalReasonField) {
+                        return;
+                    }
+
+                    var action = button.getAttribute('data-payment-action');
+                    var paymentId = button.getAttribute('data-payment-id');
+                    var transporter = button.getAttribute('data-payment-transporter') || 'this transporter';
+                    var isHold = action === 'hold';
+
+                    modalForm.action = (isHold ? holdActionBaseUrl : rejectActionBaseUrl).replace('__PAYMENT__', paymentId);
+                    modalTitle.textContent = isHold ? 'Put Payment On Hold' : 'Reject Payment';
+                    modalHelp.textContent = (isHold ? 'Add the reason for putting this payment on hold for ' : 'Add the reason for rejecting the payment for ') + transporter + '.';
+                    modalReasonField.value = '';
+                    modalReasonField.placeholder = isHold
+                        ? 'Explain why this payment is on hold...'
+                        : 'Explain why this payment is rejected...';
+                    modalSubmitButton.textContent = isHold ? 'Mark On Hold' : 'Reject Payment';
+
+                    if (window.bootstrap) {
+                        window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+                    }
+                });
+            });
+
+            if (!selectAll) {
+                // Keep the modal and tooltips active even when no bulk-approve checkbox is present.
+            } else {
+                var syncSelectAll = function () {
+                    var checkboxes = Array.from(document.querySelectorAll(itemSelector));
+                    var checkedCount = checkboxes.filter(function (checkbox) {
+                        return checkbox.checked;
+                    }).length;
+
+                    selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                    selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+                };
+
+                selectAll.addEventListener('change', function () {
+                    document.querySelectorAll(itemSelector).forEach(function (checkbox) {
+                        checkbox.checked = selectAll.checked;
+                    });
+                    syncSelectAll();
+                });
+
+                document.querySelectorAll(itemSelector).forEach(function (checkbox) {
+                    checkbox.addEventListener('change', syncSelectAll);
+                });
+
                 syncSelectAll();
-            });
-
-            document.querySelectorAll(itemSelector).forEach(function (checkbox) {
-                checkbox.addEventListener('change', syncSelectAll);
-            });
-
-            syncSelectAll();
+            }
         })();
     </script>
 @endpush

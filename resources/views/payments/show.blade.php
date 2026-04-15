@@ -106,6 +106,16 @@
             background: #bb2d3b;
         }
 
+        .payment-top-action.is-hold {
+            background: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+
+        .payment-top-action.is-hold:hover,
+        .payment-top-action.is-hold:focus {
+            background: #0284c7;
+        }
+
         .payment-detail-tile {
             border-radius: 0.95rem;
             background: #f8fafc;
@@ -136,6 +146,71 @@
             line-height: 1.35;
         }
 
+        .payment-status-modal .modal-dialog {
+            max-width: 440px;
+        }
+
+        .payment-status-modal .modal-content {
+            border: 0;
+            border-radius: 1.1rem;
+            overflow: hidden;
+            box-shadow: 0 28px 56px rgba(32, 52, 84, 0.18);
+        }
+
+        .payment-status-modal .modal-header {
+            padding: 0.9rem 1rem 0.55rem;
+            border-bottom: 0;
+        }
+
+        .payment-status-modal .modal-title {
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #203454;
+        }
+
+        .payment-status-modal .modal-body {
+            padding: 0 1rem 0.95rem;
+        }
+
+        .payment-status-modal .modal-footer {
+            padding: 0.75rem 1rem 1rem;
+            border-top: 0;
+            gap: 0.55rem;
+        }
+
+        .payment-status-modal .btn-close {
+            transform: scale(0.85);
+            opacity: 0.7;
+        }
+
+        .payment-status-help {
+            font-size: 0.8rem;
+            line-height: 1.45;
+            color: #6b7a8f;
+            margin-bottom: 0.75rem;
+        }
+
+        .payment-status-modal .form-label {
+            font-size: 0.8rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .payment-status-modal .form-control {
+            min-height: 108px;
+            resize: none;
+            border-radius: 0.9rem;
+            font-size: 0.84rem;
+            line-height: 1.45;
+            padding: 0.8rem 0.9rem;
+        }
+
+        .payment-status-modal .btn {
+            border-radius: 0.8rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.6rem 0.95rem;
+        }
+
         @media (max-width: 991.98px) {
             .payment-summary-strip {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -163,7 +238,7 @@
             <a class="payment-top-action is-back text-decoration-none" href="{{ route('payments.index') }}" data-bs-toggle="tooltip" data-bs-placement="top" title="Back to Payments" aria-label="Back to Payments">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            @if ($canManagePayments && $payment->status === 'due')
+            @if ($canManagePayments && in_array($payment->status, ['due', 'on_hold'], true))
                 <form method="POST" action="{{ route('payments.approve', $payment) }}">
                     @csrf
                     @method('PATCH')
@@ -173,13 +248,14 @@
                 </form>
             @endif
             @if ($canManagePayments && $payment->status === 'due')
-                <form method="POST" action="{{ route('payments.reject', $payment) }}">
-                    @csrf
-                    @method('PATCH')
-                    <button class="payment-top-action is-reject border-0" type="submit" data-bs-toggle="tooltip" data-bs-placement="top" title="Reject Payment" aria-label="Reject Payment">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </form>
+                <button class="payment-top-action is-hold border-0" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="Put Payment On Hold" aria-label="Put Payment On Hold" data-payment-action="hold">
+                    <i class="fa-solid fa-pause"></i>
+                </button>
+            @endif
+            @if ($canManagePayments && in_array($payment->status, ['due', 'on_hold'], true))
+                <button class="payment-top-action is-reject border-0" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="Reject Payment" aria-label="Reject Payment" data-payment-action="reject">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             @endif
         </div>
     </div>
@@ -211,6 +287,7 @@
                         $hasBankDetails = filled($transporter?->bank_name) || filled($transporter?->bank_account_title) || filled($transporter?->bank_account_no);
                         $hasEasyPaisa = filled($transporter?->easypaisa_no);
                         $hasJazzCash = filled($transporter?->jazzcash_no);
+                        $hasReason = filled($payment->remarks);
                     @endphp
 
                     <div class="row g-3 mt-1">
@@ -219,6 +296,15 @@
                                 <div class="payment-detail-tile">
                                     <p class="mini-note">EasyPaisa</p>
                                     <p class="payment-detail-value">{{ $transporter->easypaisa_no }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($hasReason)
+                            <div class="col-md-4">
+                                <div class="payment-detail-tile">
+                                    <p class="mini-note">Reason</p>
+                                    <p class="payment-detail-value">{{ $payment->remarks }}</p>
                                 </div>
                             </div>
                         @endif
@@ -362,13 +448,6 @@
                                     <p class="payment-detail-subvalue">Fare amount multiplied by total trips.</p>
                                 </div>
                             </div>
-                            <div class="col-12">
-                                <div class="payment-detail-tile">
-                                    <p class="mini-note">Remarks</p>
-                                    <p class="payment-detail-value">{{ $payment->remarks ?: 'No remarks added for this payment.' }}</p>
-                                    <p class="payment-detail-subvalue">Operational notes attached to the trip and payment record.</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -376,15 +455,71 @@
         </div>
     </section>
 
+    <div class="modal fade payment-status-modal" id="paymentStatusReasonModal" tabindex="-1" aria-labelledby="paymentStatusReasonModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" id="paymentStatusReasonForm" novalidate>
+                    @csrf
+                    @method('PATCH')
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="paymentStatusReasonModalLabel">Update Payment Status</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="payment-status-help" id="paymentStatusReasonHelp">Add a reason for this status update.</p>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold" for="payment_status_reason">Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="payment_status_reason" name="reason" rows="4" placeholder="Write the reason here..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn btn-success" type="submit" id="paymentStatusReasonSubmit">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                if (!window.bootstrap || !window.bootstrap.Tooltip) {
+                if (!window.bootstrap) {
                     return;
                 }
 
-                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
-                    window.bootstrap.Tooltip.getOrCreateInstance(element);
+                if (window.bootstrap.Tooltip) {
+                    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                        window.bootstrap.Tooltip.getOrCreateInstance(element);
+                    });
+                }
+
+                var modalElement = document.getElementById('paymentStatusReasonModal');
+                var modalForm = document.getElementById('paymentStatusReasonForm');
+                var modalTitle = document.getElementById('paymentStatusReasonModalLabel');
+                var modalHelp = document.getElementById('paymentStatusReasonHelp');
+                var modalReasonField = document.getElementById('payment_status_reason');
+                var modalSubmitButton = document.getElementById('paymentStatusReasonSubmit');
+                var holdUrl = @json(route('payments.hold', $payment));
+                var rejectUrl = @json(route('payments.reject', $payment));
+
+                document.querySelectorAll('[data-payment-action]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var isHold = button.getAttribute('data-payment-action') === 'hold';
+
+                        modalForm.action = isHold ? holdUrl : rejectUrl;
+                        modalTitle.textContent = isHold ? 'Put Payment On Hold' : 'Reject Payment';
+                        modalHelp.textContent = isHold
+                            ? 'Add the reason for putting this payment on hold.'
+                            : 'Add the reason for rejecting this payment.';
+                        modalReasonField.value = '';
+                        modalReasonField.placeholder = isHold
+                            ? 'Explain why this payment is on hold...'
+                            : 'Explain why this payment is rejected...';
+                        modalSubmitButton.textContent = isHold ? 'Mark On Hold' : 'Reject Payment';
+
+                        window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+                    });
                 });
             });
         </script>

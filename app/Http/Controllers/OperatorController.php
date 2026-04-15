@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\BuildsExcelExports;
 use App\Http\Requests\StoreOperatorRequest;
 use App\Models\District;
 use App\Models\Operator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -104,9 +105,24 @@ class OperatorController extends Controller
         ]);
     }
 
-    public function store(StoreOperatorRequest $request): RedirectResponse
+    public function store(StoreOperatorRequest $request): RedirectResponse|JsonResponse
     {
-        Operator::create($request->validated());
+        $operator = Operator::create($request->validated())->load('district');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Operator saved successfully.',
+                'operator' => [
+                    'id' => $operator->id,
+                    'name' => $operator->name,
+                    'owner_type' => $operator->owner_type,
+                    'cnic' => $operator->cnic,
+                    'phone' => $operator->phone,
+                    'district_id' => $operator->district_id,
+                    'district_name' => $operator->district?->name,
+                ],
+            ]);
+        }
 
         return redirect()->route('transporters.create')
             ->with('success', 'Operator saved successfully.');

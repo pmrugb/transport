@@ -11,6 +11,7 @@ use App\Models\TransportRoute;
 use App\Models\TripCost;
 use App\Models\TripDetail;
 use App\Models\Vehicle;
+use App\Models\VehicleType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -312,7 +313,10 @@ class TripDetailController extends Controller
         return [
             'routes' => $routes,
             'vehicles' => $vehicles,
-            'transporters' => Operator::query()->select(['id', 'name', 'owner_type'])->orderBy('name')->get(),
+            'transporters' => Operator::query()->select(['id', 'name', 'cnic', 'owner_type'])->orderBy('name')->get(),
+            'ownerTypes' => Operator::OWNER_TYPES,
+            'vehicleTypes' => VehicleType::query()->select(['id', 'name'])->orderBy('name')->get(),
+            'vehicleStatuses' => Vehicle::STATUSES,
             'fares' => $fares,
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'statuses' => TripDetail::STATUSES,
@@ -343,6 +347,7 @@ class TripDetailController extends Controller
                 'route_id',
                 'transporter_id',
                 'driver_name',
+                'driver_cnic',
                 'driver_mobile',
                 'district_id',
                 'fare_amount',

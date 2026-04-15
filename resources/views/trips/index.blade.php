@@ -119,6 +119,7 @@
                                     <th>Route</th>
                                     <th>Transporter</th>
                                     <th>Driver</th>
+                                    <th>CNIC</th>
                                     <th>District</th>
                                     <th>Fare</th>
                                     <th>Total</th>
@@ -136,6 +137,7 @@
                                         <td>{{ $trip->route?->route_name ?: 'N/A' }}</td>
                                         <td>{{ $trip->transporter?->name ?: 'N/A' }}</td>
                                         <td>{{ $trip->driver_name }}<br><span class="text-muted small">{{ $trip->driver_mobile }}</span></td>
+                                        <td>{{ $trip->driver_cnic ?: 'N/A' }}</td>
                                         <td>{{ $trip->district?->name ?: 'N/A' }}</td>
                                         <td>{{ number_format((float) $trip->fare_amount, 2) }}</td>
                                         <td>{{ number_format((float) $trip->total_amount, 2) }}</td>
@@ -161,7 +163,7 @@
                                         @endif
                                     </tr>
                                 @empty
-                                    <tr><td colspan="{{ $canManageTrips ? 12 : 11 }}" class="text-center text-muted py-4">No trips found yet.</td></tr>
+                                    <tr><td colspan="{{ $canManageTrips ? 13 : 12 }}" class="text-center text-muted py-4">No trips found yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

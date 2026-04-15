@@ -1,3 +1,9 @@
+@php
+    $isCreateForm = ! ($vehicle->exists ?? false);
+    $defaultVehicleType = $vehicleTypes->first(fn ($vehicleType) => strtolower((string) $vehicleType->name) === 'suzuki pick up');
+    $selectedVehicleType = old('vehicle_type', $vehicle->vehicle_type ?: ($isCreateForm ? $defaultVehicleType?->id : null));
+@endphp
+
 <form method="post" action="{{ $formAction }}" id="vehicleForm" novalidate>
     @csrf
     @if ($formMethod !== 'post')
@@ -19,7 +25,7 @@
             <select class="form-select @error('vehicle_type') is-invalid @enderror" id="vehicle_type" name="vehicle_type" data-placeholder="Select vehicle type" required>
                 <option value="">Select vehicle type</option>
                 @foreach ($vehicleTypes as $vehicleType)
-                    <option value="{{ $vehicleType->id }}" @selected((string) old('vehicle_type', $vehicle->vehicle_type) === (string) $vehicleType->id)>{{ $vehicleType->name }}</option>
+                    <option value="{{ $vehicleType->id }}" @selected((string) $selectedVehicleType === (string) $vehicleType->id)>{{ $vehicleType->name }}</option>
                 @endforeach
             </select>
             @error('vehicle_type')<div class="invalid-feedback">{{ $message }}</div>@enderror

@@ -64,25 +64,9 @@
                             <div class="info-tile h-100">
                                 <p class="mini-note mb-2">Payment Methods</p>
                                 <div class="row g-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <p class="mini-note mb-1">EasyPaisa</p>
                                         <p class="fw-semibold mb-0">{{ $operator->easypaisa_no ?: 'Not provided' }}</p>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <p class="mini-note mb-1">JazzCash</p>
-                                        <p class="fw-semibold mb-0">{{ $operator->jazzcash_no ?: 'Not provided' }}</p>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <p class="mini-note mb-1">Bank</p>
-                                        <p class="fw-semibold mb-0">{{ $operator->bank_name ?: 'Not provided' }}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p class="mini-note mb-1">Account Title</p>
-                                        <p class="fw-semibold mb-0">{{ $operator->bank_account_title ?: 'Not provided' }}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p class="mini-note mb-1">Account Number</p>
-                                        <p class="fw-semibold mb-0">{{ $operator->bank_account_no ?: 'Not provided' }}</p>
                                     </div>
                                 </div>
                             </div>

@@ -39,6 +39,11 @@ class PaymentController extends Controller
         return $this->renderIndex($request, 'paid', 'Paid Payments', 'Payments that have already been settled with transporters.');
     }
 
+    public function onHold(Request $request): View
+    {
+        return $this->renderIndex($request, 'on_hold', 'On Hold Payments', 'Payments that are temporarily held pending clarification or further review.');
+    }
+
     public function rejected(Request $request): View
     {
         return $this->renderIndex($request, 'rejected', 'Rejected Payments', 'Payments that were reviewed and rejected.');
@@ -123,15 +128,38 @@ class PaymentController extends Controller
         $this->ensureCanManagePayments();
 
         if (in_array($payment->status, ['paid', 'rejected'], true)) {
-            return back()->with('error', 'This payment cannot be approved in its current state.');
+            return redirect()->route('payments.index')->with('error', 'This payment cannot be approved in its current state.');
         }
 
-        $payment->update(['status' => 'paid']);
+        $payment->update([
+            'status' => 'paid',
+            'remarks' => null,
+        ]);
 
-        return back()->with('success', 'Payment approved successfully and moved to paid payments.');
+        return redirect()->route('payments.index')->with('success', 'Payment approved successfully and moved to paid payments.');
     }
 
-    public function reject(TripCost $payment): RedirectResponse
+    public function hold(Request $request, TripCost $payment): RedirectResponse
+    {
+        $this->ensureCanManagePayments();
+
+        if (in_array($payment->status, ['paid', 'rejected'], true)) {
+            return back()->with('error', 'This payment cannot be put on hold in its current state.');
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $payment->update([
+            'status' => 'on_hold',
+            'remarks' => trim($validated['reason']),
+        ]);
+
+        return back()->with('success', 'Payment marked as on hold successfully.');
+    }
+
+    public function reject(Request $request, TripCost $payment): RedirectResponse
     {
         $this->ensureCanManagePayments();
 
@@ -139,7 +167,14 @@ class PaymentController extends Controller
             return back()->with('error', 'Paid payments cannot be rejected.');
         }
 
-        $payment->update(['status' => 'rejected']);
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $payment->update([
+            'status' => 'rejected',
+            'remarks' => trim($validated['reason']),
+        ]);
 
         return back()->with('success', 'Payment rejected successfully.');
     }
@@ -188,6 +223,7 @@ class PaymentController extends Controller
             'statusBadges' => [
                 'due' => $this->statusBadge('due'),
                 'paid' => $this->statusBadge('paid'),
+                'on_hold' => $this->statusBadge('on_hold'),
                 'rejected' => $this->statusBadge('rejected'),
             ],
         ]);
@@ -206,8 +242,8 @@ class PaymentController extends Controller
         return [
             'statuses' => TripCost::STATUSES,
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
-            'transporters' => Operator::query()->select(['id', 'name'])->orderBy('name')->get(),
-            'routes' => TransportRoute::query()->select(['id', 'route_name'])->orderBy('route_name')->get(),
+            'transporters' => Operator::query()->select(['id', 'name', 'cnic'])->orderBy('name')->get(),
+            'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
             'canManagePayments' => auth()->user()?->canManagePayments() ?? false,
             'stats' => [
                 'total' => (int) ($paymentStats?->total ?? 0),
@@ -222,6 +258,7 @@ class PaymentController extends Controller
     {
         return match ($status) {
             'paid' => 'badge-soft-success',
+            'on_hold' => 'badge-soft-info',
             'rejected' => 'badge-soft-danger',
             default => 'badge-soft-warning',
         };
