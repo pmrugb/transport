@@ -465,10 +465,6 @@
                                     <tr><td class="detail-key">District</td><td class="detail-value">{{ $transporter?->district?->name ?: ($route?->district?->name ?: 'N/A') }}</td></tr>
                                     <tr><td class="detail-key">Address</td><td class="detail-value">{{ $transporter?->address ?: 'N/A' }}</td></tr>
                                     <tr><td class="detail-key">EasyPaisa</td><td class="detail-value">{{ $transporter?->easypaisa_no ?: 'N/A' }}</td></tr>
-                                    <tr><td class="detail-key">JazzCash</td><td class="detail-value">{{ $transporter?->jazzcash_no ?: 'N/A' }}</td></tr>
-                                    <tr><td class="detail-key">Bank</td><td class="detail-value">{{ $transporter?->bank_name ?: 'N/A' }}</td></tr>
-                                    <tr><td class="detail-key">Account Title</td><td class="detail-value">{{ $transporter?->bank_account_title ?: 'N/A' }}</td></tr>
-                                    <tr><td class="detail-key">Account Number</td><td class="detail-value">{{ $transporter?->bank_account_no ?: 'N/A' }}</td></tr>
                                 </table>
                             </section>
 

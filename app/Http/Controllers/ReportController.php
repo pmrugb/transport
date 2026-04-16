@@ -20,6 +20,8 @@ class ReportController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureSuperadmin();
+
         $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
         $reportsQuery = $this->filteredReportsQuery($request);
@@ -49,6 +51,8 @@ class ReportController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
+        $this->ensureSuperadmin();
+
         $columns = $this->selectedReportExportColumns($request);
         $filename = 'reports-'.now()->format('Ymd-His').'.csv';
 
@@ -68,6 +72,8 @@ class ReportController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
+        $this->ensureSuperadmin();
+
         $columns = $this->selectedReportExportColumns($request);
         $rows = $this->filteredReportsQuery($request)
             ->get()
@@ -87,6 +93,8 @@ class ReportController extends Controller
 
     public function pdfView(Request $request): View
     {
+        $this->ensureSuperadmin();
+
         $columns = $this->selectedReportExportColumns($request);
         $rows = $this->filteredReportsQuery($request)
             ->get()
@@ -258,5 +266,10 @@ class ReportController extends Controller
             'Route' => $filters['route_id'] ? TransportRoute::query()->whereKey($filters['route_id'])->value('route_name') : null,
             'Transporter' => $filters['transporter_id'] ? Operator::query()->whereKey($filters['transporter_id'])->value('name') : null,
         ];
+    }
+
+    private function ensureSuperadmin(): void
+    {
+        abort_unless(auth()->user()?->isSuperadmin(), 403);
     }
 }

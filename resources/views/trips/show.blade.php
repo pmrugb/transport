@@ -53,6 +53,12 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-tile h-100">
+                                <p class="mini-note mb-2">Transporter CNIC</p>
+                                <p class="fw-semibold mb-0">{{ $trip->transporter?->cnic ?: 'N/A' }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-tile h-100">
                                 <p class="mini-note mb-2">Driver Name</p>
                                 <p class="fw-semibold mb-0">{{ $trip->driver_name ?: 'N/A' }}</p>
                             </div>

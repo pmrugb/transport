@@ -39,12 +39,6 @@
                         <span class="nav-link-text">Dashboard</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
-                        <span class="nav-link-icon"><i class="fa-solid fa-chart-column app-icon"></i></span>
-                        <span class="nav-link-text">Export Reports</span>
-                    </a>
-                </li>
             @endunless
             <li class="nav-item nav-item-group {{ request()->routeIs('payments.*') ? 'open' : '' }}">
                 <button class="nav-link nav-link-group-toggle {{ request()->routeIs('payments.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopPaymentsMenu" aria-expanded="{{ request()->routeIs('payments.*') ? 'true' : 'false' }}" aria-controls="desktopPaymentsMenu">
@@ -193,12 +187,14 @@
                         </div>
                     </div>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
-                        <span class="nav-link-icon"><i class="fa-solid fa-chart-column app-icon"></i></span>
-                        <span class="nav-link-text">Reports</span>
-                    </a>
-                </li>
+                @if (auth()->user()?->isSuperadmin())
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                            <span class="nav-link-icon"><i class="fa-solid fa-chart-column app-icon"></i></span>
+                            <span class="nav-link-text">Reports</span>
+                        </a>
+                    </li>
+                @endif
             @endunless
             <li class="nav-item">
                 <div class="nav-link ">

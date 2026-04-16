@@ -349,10 +349,6 @@ class PaymentController extends Controller
             'Transporter Address' => $transporter?->address ?: '',
             'Transporter District' => $transporter?->district?->name ?: ($route?->district?->name ?: ''),
             'EasyPaisa Account' => $transporter?->easypaisa_no ?: '',
-            'JazzCash Account' => $transporter?->jazzcash_no ?: '',
-            'Bank Name' => $transporter?->bank_name ?: '',
-            'Bank Account Title' => $transporter?->bank_account_title ?: '',
-            'Bank Account Number' => $transporter?->bank_account_no ?: '',
             'Driver Name' => $trip?->driver_name ?: '',
             'Driver CNIC' => $trip?->driver_cnic ?: '',
             'Driver Mobile' => $trip?->driver_mobile ?: '',
@@ -369,7 +365,6 @@ class PaymentController extends Controller
             'Total Amount' => (float) $payment->total_amount,
             'Trip Status' => $trip?->status ? (TripDetail::STATUSES[$trip->status] ?? Str::headline($trip->status)) : '',
             'Remarks' => $payment->remarks ?: ($trip?->remarks ?: ''),
-            'Created By' => $trip?->creator?->name ?: '',
         ];
     }
 
@@ -385,10 +380,6 @@ class PaymentController extends Controller
             'Transporter Address' => '',
             'Transporter District' => '',
             'EasyPaisa Account' => '',
-            'JazzCash Account' => '',
-            'Bank Name' => '',
-            'Bank Account Title' => '',
-            'Bank Account Number' => '',
             'Driver Name' => '',
             'Driver CNIC' => '',
             'Driver Mobile' => '',
@@ -405,7 +396,6 @@ class PaymentController extends Controller
             'Total Amount' => '',
             'Trip Status' => '',
             'Remarks' => '',
-            'Created By' => '',
         ]);
 
         $zip = new ZipArchive();

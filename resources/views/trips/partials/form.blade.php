@@ -116,13 +116,17 @@
             <select class="form-select @error('transporter_id') is-invalid @enderror" id="transporter_id" name="transporter_id" data-placeholder="Select transporter" required>
                 <option value="">Select transporter</option>
                 @foreach ($transporters as $transporter)
-                    <option value="{{ $transporter->id }}" data-owner-type="{{ $transporter->owner_type }}" @selected((string) old('transporter_id', $trip->transporter_id) === (string) $transporter->id)>
+                    <option value="{{ $transporter->id }}" data-owner-type="{{ $transporter->owner_type }}" data-cnic="{{ $transporter->cnic }}" @selected((string) old('transporter_id', $trip->transporter_id) === (string) $transporter->id)>
                         {{ $transporter->name }}
                     </option>
                 @endforeach
             </select>
             <input type="hidden" id="transporter_id_hidden" name="transporter_id" value="{{ old('transporter_id', $trip->transporter_id) }}">
             @error('transporter_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold" for="transporter_cnic_display">Transporter CNIC</label>
+            <input class="form-control bg-light" id="transporter_cnic_display" type="text" value="{{ old('transporter_id', $trip->transporter_id) ? ($transporters->firstWhere('id', old('transporter_id', $trip->transporter_id))?->cnic ?: 'N/A') : 'N/A' }}" readonly tabindex="-1">
         </div>
 
         <div class="col-md-4">
@@ -246,14 +250,9 @@
                             <input class="form-control" id="quick_transporter_address" name="address" type="text" value="Gilgit" required>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_transporter_easypaisa">EasyPaisa Number</label>
-                            <div class="form-check mt-2">
-                                <label class="form-label" for="quick_transporter_easypaisa_same_as_phone">Same as phone number</label>
-                                <input class="form-check-input" id="quick_transporter_easypaisa_same_as_phone" type="checkbox">
-                            </div>
-                            <input class="form-control" id="quick_transporter_easypaisa" name="easypaisa_no" type="text" inputmode="numeric" maxlength="12" placeholder="0312-1234567">
-                            
-                            <div class="form-text">Optional mobile wallet number for EasyPaisa transfers.</div>
+                            <label class="form-label fw-semibold" for="quick_transporter_easypaisa">IBAN</label>
+                            <input class="form-control" id="quick_transporter_easypaisa" name="easypaisa_no" type="text" maxlength="34" placeholder="PK00BANK0000000000000000">
+                            <div class="form-text">Optional IBAN for transporter payments.</div>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold" for="quick_transporter_remarks">Remarks</label>
@@ -354,6 +353,7 @@
             const noOfTripsField = document.getElementById('no_of_trips');
             const totalAmountField = document.getElementById('total_amount');
             const halfTripField = document.getElementById('is_half_trip');
+            const transporterCnicDisplayField = document.getElementById('transporter_cnic_display');
             const driverNameField = document.getElementById('driver_name');
             const cnicField = document.getElementById('driver_cnic');
             const mobileField = document.getElementById('driver_mobile');
@@ -373,7 +373,6 @@
             const quickTransporterDistrictField = document.getElementById('quick_transporter_district');
             const quickTransporterAddressField = document.getElementById('quick_transporter_address');
             const quickTransporterEasypaisaField = document.getElementById('quick_transporter_easypaisa');
-            const quickTransporterEasypaisaSameAsPhoneField = document.getElementById('quick_transporter_easypaisa_same_as_phone');
             const quickVehicleTransporterField = document.getElementById('quick_vehicle_transporter_id');
             let baseFareAmount = Number(fareAmountField.value || 0);
 
@@ -571,6 +570,17 @@
                 return selectedOption ? selectedOption.dataset.ownerType || '' : '';
             };
 
+            const syncTransporterCnicDisplay = function () {
+                if (!transporterCnicDisplayField || !transporterField) {
+                    return;
+                }
+
+                const selectedOption = transporterField.options[transporterField.selectedIndex];
+                const cnic = selectedOption ? selectedOption.dataset.cnic || '' : '';
+
+                transporterCnicDisplayField.value = cnic || 'N/A';
+            };
+
             const updateDriverCnicState = function (ownerType) {
                 const isCompany = ownerType === 'company';
 
@@ -665,6 +675,10 @@
                 ].filter(Boolean).join('-');
             };
 
+            const formatIban = function (value) {
+                return value.replace(/\s+/g, '').toUpperCase().slice(0, 34);
+            };
+
             initModalSelect2(quickTransporterModalElement, [
                 document.getElementById('quick_owner_type'),
                 document.getElementById('quick_transporter_district'),
@@ -756,6 +770,7 @@
                     }
 
                     updateDriverCnicState(data.transporter_owner_type || getSelectedTransporterOwnerType());
+                    syncTransporterCnicDisplay();
                     syncFareValues();
                     setAutoFilledFieldState();
                 });
@@ -799,12 +814,7 @@
 
             cnicField.value = formatCnic(cnicField.value);
             mobileField.value = formatMobile(mobileField.value);
-
-            const syncQuickTransporterEasypaisaWithPhone = function () {
-                if (quickTransporterEasypaisaSameAsPhoneField && quickTransporterEasypaisaSameAsPhoneField.checked && quickTransporterEasypaisaField && quickTransporterPhoneField) {
-                    quickTransporterEasypaisaField.value = quickTransporterPhoneField.value;
-                }
-            };
+            syncTransporterCnicDisplay();
 
             if (quickTransporterOwnerTypeField && quickTransporterCnicField && quickTransporterPhoneField) {
                 const syncQuickTransporterOwnerType = function () {
@@ -840,8 +850,6 @@
                         quickTransporterPhoneField.placeholder = '0312-1234567';
                         quickTransporterPhoneField.value = formatMobile(quickTransporterPhoneField.value);
                     }
-
-                    syncQuickTransporterEasypaisaWithPhone();
                 };
 
                 quickTransporterOwnerTypeField.addEventListener('change', syncQuickTransporterOwnerType);
@@ -855,25 +863,17 @@
                     quickTransporterPhoneField.value = quickTransporterOwnerTypeField.value === 'company'
                         ? formatCompanyPhone(quickTransporterPhoneField.value)
                         : formatMobile(quickTransporterPhoneField.value);
-                    syncQuickTransporterEasypaisaWithPhone();
                 });
                 if (quickTransporterEasypaisaField) {
                     quickTransporterEasypaisaField.addEventListener('input', function () {
-                        quickTransporterEasypaisaField.value = formatMobile(quickTransporterEasypaisaField.value);
-                    });
-                }
-                if (quickTransporterEasypaisaSameAsPhoneField) {
-                    quickTransporterEasypaisaSameAsPhoneField.addEventListener('change', function () {
-                        if (quickTransporterEasypaisaSameAsPhoneField.checked) {
-                            syncQuickTransporterEasypaisaWithPhone();
-                        }
+                        quickTransporterEasypaisaField.value = formatIban(quickTransporterEasypaisaField.value);
                     });
                 }
 
                 quickTransporterCnicField.value = formatCnic(quickTransporterCnicField.value);
                 quickTransporterPhoneField.value = formatMobile(quickTransporterPhoneField.value);
                 if (quickTransporterEasypaisaField) {
-                    quickTransporterEasypaisaField.value = formatMobile(quickTransporterEasypaisaField.value);
+                    quickTransporterEasypaisaField.value = formatIban(quickTransporterEasypaisaField.value);
                 }
                 syncQuickTransporterOwnerType();
             }
@@ -898,8 +898,10 @@
 
                         upsertSelectOption(transporterField, operator.id, operator.name, true, {
                             ownerType: operator.owner_type || '',
+                            cnic: operator.cnic || '',
                         });
                         upsertSelectOption(quickVehicleTransporterField, operator.id, optionLabel, true, {});
+                        syncTransporterCnicDisplay();
                         updateDriverCnicState(operator.owner_type || '');
                         clearAjaxErrors(quickTransporterForm);
                         quickTransporterForm.reset();
@@ -918,9 +920,6 @@
                         }
                         if (quickTransporterAddressField) {
                             quickTransporterAddressField.value = quickTransporterAddressField.defaultValue;
-                        }
-                        if (quickTransporterEasypaisaSameAsPhoneField) {
-                            quickTransporterEasypaisaSameAsPhoneField.checked = false;
                         }
                         if (window.bootstrap) {
                             window.bootstrap.Modal.getOrCreateInstance(quickTransporterModalElement).hide();
@@ -962,6 +961,7 @@
                 });
 
                 window.jQuery(transporterField).on('change', function () {
+                    syncTransporterCnicDisplay();
                     updateDriverCnicState(getSelectedTransporterOwnerType());
                     validateField(transporterField);
                 });
@@ -983,6 +983,7 @@
                 });
 
                 transporterField.addEventListener('change', function () {
+                    syncTransporterCnicDisplay();
                     updateDriverCnicState(getSelectedTransporterOwnerType());
                     validateField(transporterField);
                 });

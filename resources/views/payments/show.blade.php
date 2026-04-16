@@ -285,6 +285,7 @@
                     @php
                         $transporter = $payment->transporter;
                         $hasBankDetails = filled($transporter?->bank_name) || filled($transporter?->bank_account_title) || filled($transporter?->bank_account_no);
+                        $hasTransporterCnic = filled($transporter?->cnic);
                         $hasEasyPaisa = filled($transporter?->easypaisa_no);
                         $hasJazzCash = filled($transporter?->jazzcash_no);
                         $hasReason = filled($payment->remarks);
@@ -292,6 +293,15 @@
                     @endphp
 
                     <div class="row g-3 mt-1">
+                        @if ($hasTransporterCnic)
+                            <div class="col-md-4">
+                                <div class="payment-detail-tile">
+                                    <p class="mini-note">Transporter CNIC</p>
+                                    <p class="payment-detail-value">{{ $transporter->cnic }}</p>
+                                </div>
+                            </div>
+                        @endif
+
                         @if ($hasEasyPaisa)
                             <div class="col-md-4">
                                 <div class="payment-detail-tile">
