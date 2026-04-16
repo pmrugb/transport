@@ -3,6 +3,15 @@
     @if ($formMethod !== 'post')
         @method($formMethod)
     @endif
+    @php
+        $isCreateForm = $formMethod === 'post';
+        $selectedFareId = old('fare_id', $trip->fare_id);
+        $selectedFare = $fares->firstWhere('id', $selectedFareId);
+        $initialHalfTrip = old('is_half_trip');
+        $isHalfTripChecked = $initialHalfTrip !== null
+            ? (bool) $initialHalfTrip
+            : ($selectedFare && (float) ($trip->fare_amount ?? 0) > 0 && abs((float) $trip->fare_amount - ((float) $selectedFare->amount / 2)) < 0.01);
+    @endphp
 
     <style>
         .is-half-trip-wrap {
@@ -75,14 +84,6 @@
             </select>
             @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        @php
-            $selectedFareId = old('fare_id', $trip->fare_id);
-            $selectedFare = $fares->firstWhere('id', $selectedFareId);
-            $initialHalfTrip = old('is_half_trip');
-            $isHalfTripChecked = $initialHalfTrip !== null
-                ? (bool) $initialHalfTrip
-                : ($selectedFare && (float) ($trip->fare_amount ?? 0) > 0 && abs((float) $trip->fare_amount - ((float) $selectedFare->amount / 2)) < 0.01);
-        @endphp
         <div class="col-md-2">
             <label class="form-label fw-semibold" for="no_of_trips">No. of Trips <span class="text-danger">*</span></label>
             <input class="form-control @error('no_of_trips') is-invalid @enderror" id="no_of_trips" name="no_of_trips" type="number" min="1" step="1" value="{{ old('no_of_trips', $trip->no_of_trips ?? 1) }}" required>
@@ -97,7 +98,7 @@
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="route_id">Route <span class="text-danger">*</span></label>
-            <select class="form-select @error('route_id') is-invalid @enderror" id="route_id" name="route_id" data-placeholder="Select route" required>
+            <select class="form-select @error('route_id') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="route_id" name="route_id" data-placeholder="Select route" @disabled($isCreateForm) required>
                 <option value="">Select route</option>
                 @foreach ($routes as $route)
                     <option value="{{ $route->id }}" @selected((string) old('route_id', $trip->route_id) === (string) $route->id)>
@@ -111,9 +112,11 @@
         <div class="col-md-4">
             <div class="d-flex align-items-center justify-content-between gap-2">
                 <label class="form-label fw-semibold mb-0" for="transporter_id">Transporter <span class="text-danger">*</span></label>
-                <button class="btn btn-outline-success trip-inline-action" type="button" data-bs-toggle="modal" data-bs-target="#quickTransporterModal">Add Transporter</button>
+                @unless ($isCreateForm)
+                    <button class="btn btn-outline-success trip-inline-action" type="button" data-bs-toggle="modal" data-bs-target="#quickTransporterModal">Add Transporter</button>
+                @endunless
             </div>
-            <select class="form-select @error('transporter_id') is-invalid @enderror" id="transporter_id" name="transporter_id" data-placeholder="Select transporter" required>
+            <select class="form-select @error('transporter_id') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="transporter_id" name="transporter_id" data-placeholder="Select transporter" @disabled($isCreateForm) required>
                 <option value="">Select transporter</option>
                 @foreach ($transporters as $transporter)
                     <option value="{{ $transporter->id }}" data-owner-type="{{ $transporter->owner_type }}" data-cnic="{{ $transporter->cnic }}" @selected((string) old('transporter_id', $trip->transporter_id) === (string) $transporter->id)>
@@ -131,7 +134,7 @@
 
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="district_id">District <span class="text-danger">*</span></label>
-            <select class="form-select @error('district_id') is-invalid @enderror" id="district_id" name="district_id" data-placeholder="Select district" required>
+            <select class="form-select @error('district_id') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="district_id" name="district_id" data-placeholder="Select district" @disabled($isCreateForm) required>
                 <option value="">Select district</option>
                 @foreach ($districts as $district)
                     <option value="{{ $district->id }}" @selected((string) old('district_id', $trip->district_id) === (string) $district->id)>
@@ -145,23 +148,23 @@
 
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="driver_name">Driver Name <span class="text-danger">*</span></label>
-            <input class="form-control @error('driver_name') is-invalid @enderror" id="driver_name" name="driver_name" type="text" placeholder="Enter driver name" value="{{ old('driver_name', $trip->driver_name) }}" required>
+            <input class="form-control @error('driver_name') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="driver_name" name="driver_name" type="text" placeholder="Enter driver name" value="{{ old('driver_name', $trip->driver_name) }}" @readonly($isCreateForm) required>
             @error('driver_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="driver_cnic">Driver CNIC <span class="text-danger" id="driver_cnic_required">*</span></label>
-            <input class="form-control @error('driver_cnic') is-invalid @enderror" id="driver_cnic" name="driver_cnic" type="text" inputmode="numeric" maxlength="15" placeholder="12345-1234567-1" value="{{ old('driver_cnic', $trip->driver_cnic) }}" required>
+            <input class="form-control @error('driver_cnic') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="driver_cnic" name="driver_cnic" type="text" inputmode="numeric" maxlength="15" placeholder="12345-1234567-1" value="{{ old('driver_cnic', $trip->driver_cnic) }}" @readonly($isCreateForm) required>
             @error('driver_cnic')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="driver_mobile">Driver Mobile <span class="text-danger">*</span></label>
-            <input class="form-control @error('driver_mobile') is-invalid @enderror" id="driver_mobile" name="driver_mobile" type="text" inputmode="numeric" maxlength="12" placeholder="0312-1234567" value="{{ old('driver_mobile', $trip->driver_mobile) }}" required>
+            <input class="form-control @error('driver_mobile') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="driver_mobile" name="driver_mobile" type="text" inputmode="numeric" maxlength="12" placeholder="0312-1234567" value="{{ old('driver_mobile', $trip->driver_mobile) }}" @readonly($isCreateForm) required>
             @error('driver_mobile')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="fare_id">Fare <span class="text-danger">*</span></label>
-            <select class="form-select @error('fare_id') is-invalid @enderror" id="fare_id" name="fare_id" data-placeholder="Select fare" required>
+            <select class="form-select @error('fare_id') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="fare_id" name="fare_id" data-placeholder="Select fare" @disabled($isCreateForm) required>
                 <option value="">Select fare</option>
                 @foreach ($fares as $fare)
                     <option value="{{ $fare->id }}" data-amount="{{ number_format((float) $fare->amount, 2, '.', '') }}" @selected((string) old('fare_id', $trip->fare_id) === (string) $fare->id)>
@@ -174,22 +177,25 @@
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="fare_amount">Fare Amount <span class="text-danger">*</span></label>
-            <input class="form-control @error('fare_amount') is-invalid @enderror" id="fare_amount" name="fare_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('fare_amount', $trip->fare_amount) }}" required>
+            <input class="form-control @error('fare_amount') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="fare_amount" name="fare_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('fare_amount', $trip->fare_amount) }}" @readonly($isCreateForm) required>
             @error('fare_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="total_amount">Total Amount <span class="text-danger">*</span></label>
-            <input class="form-control @error('total_amount') is-invalid @enderror" id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('total_amount', $trip->total_amount) }}" required>
+            <input class="form-control @error('total_amount') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('total_amount', $trip->total_amount) }}" @readonly($isCreateForm) required>
             @error('total_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="status">Status <span class="text-danger">*</span></label>
-            <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
+            <select class="form-select @error('status') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="status" name="status" @disabled($isCreateForm) required>
                 @foreach ($statuses as $value => $label)
                     <option value="{{ $value }}" @selected(old('status', $trip->status ?? 'active') === $value)>{{ $label }}</option>
                 @endforeach
             </select>
+            @if ($isCreateForm)
+                <input type="hidden" name="status" value="{{ old('status', $trip->status ?? 'active') }}">
+            @endif
             @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-12">
@@ -335,6 +341,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('tripForm');
+            const isCreateForm = @json($isCreateForm);
 
             if (!form) {
                 return;
@@ -612,19 +619,22 @@
                     const field = pair[0];
                     const hiddenField = pair[1];
 
-                    field.disabled = false;
-                    field.classList.remove('bg-light');
-                    hiddenField.disabled = true;
+                    field.disabled = isCreateForm;
+                    field.classList.toggle('bg-light', isCreateForm);
+                    hiddenField.disabled = false;
                 });
 
-                fareAmountField.readOnly = false;
-                totalAmountField.readOnly = false;
-                driverNameField.readOnly = false;
-                cnicField.readOnly = false;
-                mobileField.readOnly = false;
+                fareAmountField.readOnly = isCreateForm;
+                totalAmountField.readOnly = isCreateForm;
+                driverNameField.readOnly = isCreateForm;
+                cnicField.readOnly = isCreateForm;
+                mobileField.readOnly = isCreateForm;
+                noOfTripsField.readOnly = false;
+                noOfTripsField.disabled = false;
+                noOfTripsField.classList.remove('bg-light');
 
                 [driverNameField, cnicField, mobileField, fareAmountField, totalAmountField].forEach(function (field) {
-                    field.classList.remove('bg-light');
+                    field.classList.toggle('bg-light', isCreateForm);
                 });
 
                 syncHiddenFields();
@@ -1002,6 +1012,10 @@
                 validateField(totalAmountField);
             });
             noOfTripsField.addEventListener('input', function () {
+                syncFareValues();
+                validateField(noOfTripsField);
+            });
+            noOfTripsField.addEventListener('change', function () {
                 syncFareValues();
                 validateField(noOfTripsField);
             });
