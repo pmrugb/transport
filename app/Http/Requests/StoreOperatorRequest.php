@@ -50,7 +50,7 @@ class StoreOperatorRequest extends FormRequest
                 $isCompany ? 'regex:/^\d{5}-\d{6}$/' : 'regex:/^\d{4}-\d{7}$/',
             ],
             'address' => ['required', 'string', 'max:255'],
-            'easypaisa_no' => ['nullable', 'string', 'size:12', 'regex:/^\d{4}-\d{7}$/'],
+            'easypaisa_no' => ['nullable', 'string', 'max:34', 'regex:/^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$/'],
             'jazzcash_no' => ['nullable', 'string', 'size:12', 'regex:/^\d{4}-\d{7}$/'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'bank_account_title' => ['nullable', 'string', 'max:255'],
@@ -84,15 +84,17 @@ class StoreOperatorRequest extends FormRequest
             ]);
         }
 
-        foreach (['easypaisa_no', 'jazzcash_no'] as $field) {
-            if (! $this->filled($field)) {
-                continue;
-            }
+        if ($this->filled('easypaisa_no')) {
+            $this->merge([
+                'easypaisa_no' => strtoupper(str_replace(' ', '', (string) $this->input('easypaisa_no'))),
+            ]);
+        }
 
-            $digits = preg_replace('/\D/', '', (string) $this->input($field));
+        if ($this->filled('jazzcash_no')) {
+            $digits = preg_replace('/\D/', '', (string) $this->input('jazzcash_no'));
 
             $this->merge([
-                $field => implode('-', array_filter([
+                'jazzcash_no' => implode('-', array_filter([
                     substr((string) $digits, 0, 4),
                     substr((string) $digits, 4, 7),
                 ])),

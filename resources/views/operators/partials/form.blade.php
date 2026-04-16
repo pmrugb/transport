@@ -65,19 +65,15 @@
                     <p class="section-copy mb-0">Save the preferred transporter payment channels for faster and more accurate payouts.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-3" id="paymentMethodTabs">
-                    <button class="btn btn-outline-secondary payment-method-tab" type="button" data-payment-target="easypaisa">EasyPaisa</button>
+                    <button class="btn btn-outline-secondary payment-method-tab" type="button" data-payment-target="easypaisa">IBAN</button>
                     <button class="btn btn-outline-secondary payment-method-tab" type="button" data-payment-target="jazzcash">JazzCash</button>
                     <button class="btn btn-outline-secondary payment-method-tab" type="button" data-payment-target="bank">Bank</button>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6 payment-method-panel" data-payment-panel="easypaisa">
-                        <label class="form-label fw-semibold" for="easypaisa_no">EasyPaisa Number</label>
-                        <div class="form-check mt-2 mb-2">
-                            <input class="form-check-input" id="easypaisa_same_as_phone" type="checkbox">
-                            <label class="form-label mb-0" for="easypaisa_same_as_phone">Same as phone number</label>
-                        </div>
-                        <input class="form-control @error('easypaisa_no') is-invalid @enderror" id="easypaisa_no" name="easypaisa_no" placeholder="0312-1234567" type="text" inputmode="numeric" maxlength="12" value="{{ old('easypaisa_no', $operator->easypaisa_no) }}">
-                        <div class="form-text">Optional mobile wallet number for EasyPaisa transfers.</div>
+                        <label class="form-label fw-semibold" for="easypaisa_no">IBAN</label>
+                        <input class="form-control @error('easypaisa_no') is-invalid @enderror" id="easypaisa_no" name="easypaisa_no" placeholder="PK00BANK0000000000000000" type="text" maxlength="34" value="{{ old('easypaisa_no', $operator->easypaisa_no) }}">
+                        <div class="form-text">Optional IBAN for transporter payments.</div>
                         @error('easypaisa_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6 payment-method-panel" data-payment-panel="jazzcash">
@@ -124,7 +120,6 @@
             const cnicFieldWrapper = document.getElementById('cnicFieldWrapper');
             const phoneField = document.getElementById('phone');
             const easypaisaField = document.getElementById('easypaisa_no');
-            const easypaisaSameAsPhoneField = document.getElementById('easypaisa_same_as_phone');
             const jazzcashField = document.getElementById('jazzcash_no');
             const ownerTypeField = document.getElementById('owner_type');
             const nameField = document.getElementById('name');
@@ -230,15 +225,8 @@
                 });
             };
 
-            const syncEasypaisaWithPhone = function () {
-                if (!easypaisaField || !easypaisaSameAsPhoneField || !easypaisaSameAsPhoneField.checked) {
-                    return;
-                }
-
-                easypaisaField.value = ownerTypeField && ownerTypeField.value === 'company'
-                    ? ''
-                    : formatPhone(phoneField.value);
-                validateField(easypaisaField);
+            const formatIban = function (value) {
+                return value.replace(/\s+/g, '').toUpperCase().slice(0, 34);
             };
 
             const validateField = function (field) {
@@ -265,7 +253,9 @@
                     message = 'Company phone number must be in 05811-920792 format.';
                 } else if (field.id === 'phone' && ownerTypeField && ownerTypeField.value !== 'company' && !/^\d{4}-\d{7}$/.test(value)) {
                     message = 'Phone number must be in 0312-1234567 format.';
-                } else if ((field.id === 'easypaisa_no' || field.id === 'jazzcash_no') && value && !/^\d{4}-\d{7}$/.test(value)) {
+                } else if (field.id === 'easypaisa_no' && value && !/^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$/.test(value)) {
+                    message = 'IBAN must be in a valid format, such as PK00BANK0000000000000000.';
+                } else if (field.id === 'jazzcash_no' && value && !/^\d{4}-\d{7}$/.test(value)) {
                     message = 'Wallet number must be in 0312-1234567 format.';
                 }
 
@@ -293,13 +283,10 @@
             phoneField.value = formatPhone(phoneField.value);
             syncOwnerTypeFields();
             if (easypaisaField) {
-                easypaisaField.value = formatPhone(easypaisaField.value);
+                easypaisaField.value = formatIban(easypaisaField.value);
             }
             if (jazzcashField) {
                 jazzcashField.value = formatPhone(jazzcashField.value);
-            }
-            if (easypaisaSameAsPhoneField && easypaisaField && phoneField) {
-                easypaisaSameAsPhoneField.checked = easypaisaField.value !== '' && easypaisaField.value === phoneField.value;
             }
 
             if (ownerTypeField) {
@@ -325,28 +312,12 @@
                     ? formatCompanyPhone(phoneField.value)
                     : formatPhone(phoneField.value);
                 validateField(phoneField);
-                syncEasypaisaWithPhone();
             });
 
             if (easypaisaField) {
                 easypaisaField.addEventListener('input', function () {
-                    easypaisaField.value = formatPhone(easypaisaField.value);
+                    easypaisaField.value = formatIban(easypaisaField.value);
                     validateField(easypaisaField);
-
-                    if (easypaisaSameAsPhoneField && easypaisaField.value !== phoneField.value) {
-                        easypaisaSameAsPhoneField.checked = false;
-                    }
-                });
-            }
-
-            if (easypaisaSameAsPhoneField) {
-                easypaisaSameAsPhoneField.addEventListener('change', function () {
-                    if (easypaisaSameAsPhoneField.checked) {
-                        syncEasypaisaWithPhone();
-                        return;
-                    }
-
-                    easypaisaField.focus();
                 });
             }
 

@@ -65,7 +65,7 @@
                                 <p class="mini-note mb-2">Payment Methods</p>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <p class="mini-note mb-1">EasyPaisa</p>
+                                        <p class="mini-note mb-1">IBAN</p>
                                         <p class="fw-semibold mb-0">{{ $operator->easypaisa_no ?: 'Not provided' }}</p>
                                     </div>
                                 </div>

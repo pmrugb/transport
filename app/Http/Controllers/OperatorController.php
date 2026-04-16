@@ -234,7 +234,7 @@ class OperatorController extends Controller
             'phone' => 'Phone',
             'address' => 'Address',
             'district' => 'District',
-            'easypaisa_no' => 'EasyPaisa Account',
+            'easypaisa_no' => 'IBAN',
             'jazzcash_no' => 'JazzCash Account',
             'bank_name' => 'Bank Name',
             'bank_account_title' => 'Bank Account Title',
