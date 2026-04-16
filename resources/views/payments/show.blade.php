@@ -288,6 +288,7 @@
                         $hasEasyPaisa = filled($transporter?->easypaisa_no);
                         $hasJazzCash = filled($transporter?->jazzcash_no);
                         $hasReason = filled($payment->remarks);
+                        $approvalDate = $payment->status === 'paid' ? $payment->updated_at?->format('Y-m-d') : null;
                     @endphp
 
                     <div class="row g-3 mt-1">
@@ -296,6 +297,15 @@
                                 <div class="payment-detail-tile">
                                     <p class="mini-note">EasyPaisa</p>
                                     <p class="payment-detail-value">{{ $transporter->easypaisa_no }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($approvalDate)
+                            <div class="col-md-4">
+                                <div class="payment-detail-tile">
+                                    <p class="mini-note">Approve Date</p>
+                                    <p class="payment-detail-value">{{ $approvalDate }}</p>
                                 </div>
                             </div>
                         @endif
