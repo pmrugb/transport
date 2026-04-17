@@ -98,7 +98,7 @@
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="route_id">Route <span class="text-danger">*</span></label>
-            <select class="form-select @error('route_id') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="route_id" name="route_id" data-placeholder="Select route" @disabled($isCreateForm) required>
+            <select class="form-select @error('route_id') is-invalid @enderror" id="route_id" name="route_id" data-placeholder="Select route" required>
                 <option value="">Select route</option>
                 @foreach ($routes as $route)
                     <option value="{{ $route->id }}" @selected((string) old('route_id', $trip->route_id) === (string) $route->id)>
@@ -610,8 +610,11 @@
             };
 
             const setAutoFilledFieldState = function () {
+                routeField.disabled = false;
+                routeField.classList.remove('bg-light');
+                routeHiddenField.disabled = false;
+
                 [
-                    [routeField, routeHiddenField],
                     [transporterField, transporterHiddenField],
                     [districtField, districtHiddenField],
                     [fareField, fareHiddenField],

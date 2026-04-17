@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Fare;
 use App\Models\Operator;
+use App\Models\TransportRoute;
 use App\Models\TripDetail;
 use App\Models\Vehicle;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -88,19 +89,17 @@ class StoreTripDetailRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $vehicle = Vehicle::query()->with('route')->find($this->integer('vehicle_id'));
+            $route = TransportRoute::query()->find($this->integer('route_id'));
             $fare = Fare::query()->find($this->integer('fare_id'));
-            if ($vehicle) {
-                if ((int) $vehicle->route_id !== $this->integer('route_id')) {
-                    $validator->errors()->add('route_id', 'Selected route does not match the selected vehicle.');
-                }
 
+            if ($vehicle) {
                 if ((int) $vehicle->transporter_id !== $this->integer('transporter_id')) {
                     $validator->errors()->add('transporter_id', 'Selected transporter does not match the selected vehicle.');
                 }
+            }
 
-                if ((int) ($vehicle->route?->district_id ?? 0) !== $this->integer('district_id')) {
-                    $validator->errors()->add('district_id', 'Selected district does not match the selected route.');
-                }
+            if ($route && (int) $route->district_id !== $this->integer('district_id')) {
+                $validator->errors()->add('district_id', 'Selected district does not match the selected route.');
             }
 
             if ($fare && (int) $fare->route_id !== $this->integer('route_id')) {
