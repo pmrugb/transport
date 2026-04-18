@@ -174,7 +174,7 @@
                 <div class="table-toolbar">
                     <div>
                         <h3 class="section-title">Routes by Payment Value</h3>
-                        <p class="section-copy">See which NATCO routes currently carry the highest payment totals.</p>
+                        <p class="section-copy">See which routes currently carry the highest payment totals.</p>
                     </div>
                 </div>
             </div>
@@ -217,7 +217,7 @@
                 <div class="table-toolbar">
                     <div>
                         <h3 class="section-title">Recent Payment Records</h3>
-                        <p class="section-copy">Latest NATCO-linked payment entries with settlement status and amount details.</p>
+                        <p class="section-copy">Latest payment entries with settlement status and amount details.</p>
                     </div>
                 </div>
             </div>
