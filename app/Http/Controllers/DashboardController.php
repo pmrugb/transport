@@ -63,17 +63,6 @@ class DashboardController extends Controller
                 ->paginate($this->paginationSize($perPage, (clone $recentTripsQuery)->toBase()->getCountForPagination()))
                 ->withQueryString();
 
-            $routeSnapshot = TransportRoute::query()
-                ->select(['id', 'route_name', 'starting_point', 'ending_point', 'timing', 'total_distance', 'district_id', 'created_at'])
-                ->with(['district:id,name'])
-                ->whereIn(
-                    'id',
-                    (clone $natcoTripBaseQuery)->select('route_id')->distinct()
-                )
-                ->latest()
-                ->take(3)
-                ->get();
-
             $paymentQuery = TripCost::query()
                 ->whereHas(
                     'trip',
@@ -84,61 +73,85 @@ class DashboardController extends Controller
                     )
                 );
 
-            $tripStatusChart = (clone $natcoTripBaseQuery)
-                ->select('status', DB::raw('count(*) as aggregate'))
-                ->groupBy('status')
-                ->pluck('aggregate', 'status');
+            $recentPaymentsQuery = (clone $paymentQuery)
+                ->select([
+                    'id',
+                    'trip_id',
+                    'route_id',
+                    'vehicle_id',
+                    'transporter_id',
+                    'fare_amount',
+                    'no_of_trips',
+                    'total_amount',
+                    'calculation_date',
+                    'status',
+                    'remarks',
+                    'created_at',
+                ])
+                ->with([
+                    'trip:id,trip_date,district_id',
+                    'trip.district:id,name',
+                    'route:id,route_name',
+                    'vehicle:id,registration_no',
+                    'transporter:id,name',
+                ])
+                ->orderByDesc('calculation_date')
+                ->latest('id');
 
-            $paymentStatusChart = (clone $paymentQuery)
-                ->select('status', DB::raw('count(*) as aggregate'))
-                ->groupBy('status')
-                ->pluck('aggregate', 'status');
+            $recentPayments = $recentPaymentsQuery
+                ->paginate($this->paginationSize($perPage, (clone $recentPaymentsQuery)->toBase()->getCountForPagination()))
+                ->withQueryString();
 
-            $monthlyTripCounts = (clone $natcoTripBaseQuery)
-                ->selectRaw("DATE_FORMAT(trip_date, '%Y-%m') as month_key, count(*) as aggregate")
-                ->whereDate('trip_date', '>=', now()->startOfMonth()->subMonths(5))
-                ->groupBy('month_key')
-                ->orderBy('month_key')
-                ->pluck('aggregate', 'month_key');
+            $todayPaymentsQuery = (clone $paymentQuery)
+                ->where(function ($query) {
+                    $query->whereDate('calculation_date', today())
+                        ->orWhereDate('created_at', today());
+                });
 
-            $monthlyLabels = collect(range(5, 0))
-                ->map(fn ($offset) => now()->startOfMonth()->subMonths($offset))
-                ->values();
+            $routePaymentSummary = (clone $paymentQuery)
+                ->leftJoin('transport_routes', 'transport_routes.id', '=', 'trip_costs.route_id')
+                ->leftJoin('districts', 'districts.id', '=', 'transport_routes.district_id')
+                ->selectRaw('trip_costs.route_id')
+                ->selectRaw('COALESCE(transport_routes.route_name, "Unknown Route") as route_name')
+                ->selectRaw('COALESCE(districts.name, "N/A") as district_name')
+                ->selectRaw('COUNT(trip_costs.id) as payment_count')
+                ->selectRaw("COALESCE(SUM(CASE WHEN trip_costs.status = 'due' THEN trip_costs.total_amount ELSE 0 END), 0) as due_amount")
+                ->selectRaw("COALESCE(SUM(CASE WHEN trip_costs.status = 'paid' THEN trip_costs.total_amount ELSE 0 END), 0) as paid_amount")
+                ->selectRaw('COALESCE(SUM(trip_costs.total_amount), 0) as total_amount')
+                ->groupBy('trip_costs.route_id', 'transport_routes.route_name', 'districts.name')
+                ->orderByDesc('total_amount')
+                ->orderByDesc('payment_count')
+                ->get();
+
+            $topPaymentRoute = $routePaymentSummary->first();
 
             return view('dashboard', [
                 'isNatcoDashboard' => true,
                 'canManageTrips' => auth()->user()?->isSuperadmin() ?? false,
+                'canManagePayments' => auth()->user()?->canManagePayments() ?? false,
                 'tripStatuses' => TripDetail::STATUSES,
                 'stats' => [
-                    'totalTrips' => (clone $natcoTripBaseQuery)->count(),
+                    'totalPayments' => (clone $paymentQuery)->count(),
                     'duePayments' => (clone $paymentQuery)->where('status', 'due')->count(),
+                    'paidPayments' => (clone $paymentQuery)->where('status', 'paid')->count(),
+                    'todayPayments' => (clone $todayPaymentsQuery)->count(),
+                    'dueAmount' => (float) ((clone $paymentQuery)->where('status', 'due')->sum('total_amount') ?: 0),
                     'paidAmount' => (clone $paymentQuery)->where('status', 'paid')->sum('total_amount'),
-                ],
-                'chartData' => [
-                    'tripStatus' => [
-                        'labels' => ['Active', 'Completed', 'Cancelled'],
-                        'series' => [
-                            (int) ($tripStatusChart['active'] ?? 0),
-                            (int) ($tripStatusChart['completed'] ?? 0),
-                            (int) ($tripStatusChart['cancelled'] ?? 0),
-                        ],
-                    ],
-                    'paymentStatus' => [
-                        'labels' => ['Due', 'Paid', 'Rejected'],
-                        'series' => [
-                            (int) ($paymentStatusChart['due'] ?? 0),
-                            (int) ($paymentStatusChart['paid'] ?? 0),
-                            (int) ($paymentStatusChart['rejected'] ?? 0),
-                        ],
-                    ],
-                    'monthlyTrips' => [
-                        'labels' => $monthlyLabels->map(fn ($date) => $date->format('M y'))->all(),
-                        'series' => $monthlyLabels->map(fn ($date) => (int) ($monthlyTripCounts[$date->format('Y-m')] ?? 0))->all(),
-                    ],
+                    'todayAmount' => (float) ((clone $todayPaymentsQuery)->sum('total_amount') ?: 0),
+                    'onHoldPayments' => (clone $paymentQuery)->where('status', 'on_hold')->count(),
+                    'rejectedPayments' => (clone $paymentQuery)->where('status', 'rejected')->count(),
+                    'totalTrips' => (clone $natcoTripBaseQuery)->count(),
+                    'topRouteName' => $topPaymentRoute?->route_name ?: 'N/A',
+                    'topRouteAmount' => (float) ($topPaymentRoute?->total_amount ?? 0),
+                    'topRoutePayments' => (int) ($topPaymentRoute?->payment_count ?? 0),
                 ],
                 'perPage' => $perPage,
                 'recentTrips' => $recentTrips,
-                'routeSnapshot' => $routeSnapshot,
+                'recentPayments' => $recentPayments,
+                'paymentStatuses' => TripCost::STATUSES,
+                'routePaymentSummary' => $routePaymentSummary,
+                'routeSnapshot' => collect(),
+                'chartData' => [],
             ]);
         }
 

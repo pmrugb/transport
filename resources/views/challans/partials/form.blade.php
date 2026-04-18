@@ -131,7 +131,7 @@
                     </button>
                     <img
                         id="challanImagePreviewTag"
-                        src="{{ $challan->challan_image && !str_ends_with(strtolower($challan->challan_image), '.pdf') ? asset('storage/'.$challan->challan_image) : '' }}"
+                        src="{{ $challan->challan_image && !str_ends_with(strtolower($challan->challan_image), '.pdf') ? route('challans.attachment', $challan) : '' }}"
                         alt="Challan preview"
                     >
                 </div>

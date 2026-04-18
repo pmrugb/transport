@@ -1,7 +1,7 @@
 @extends('layouts.app', ['title' => 'Challan Details | Free Public Transport System', 'pageBadge' => 'Challan Management'])
 
 @php
-    $challanAttachmentUrl = $challan->challan_image ? asset('storage/'.$challan->challan_image) : null;
+    $challanAttachmentUrl = $challan->challan_image ? route('challans.attachment', $challan) : null;
     $challanAttachmentIsPdf = $challan->challan_image
         && str_ends_with(strtolower($challan->challan_image), '.pdf');
 @endphp

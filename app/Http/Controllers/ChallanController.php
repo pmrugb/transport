@@ -9,6 +9,7 @@ use App\Models\TransportRoute;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -16,6 +17,8 @@ class ChallanController extends Controller
 {
     public function routeDetails(Request $request): JsonResponse
     {
+        $this->ensureSuperadmin();
+
         $route = TransportRoute::query()
             ->findOrFail((int) $request->integer('route_id'));
 
@@ -28,6 +31,8 @@ class ChallanController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureCanViewChallans();
+
         $perPage = $this->resolvePerPage($request);
         $challanQuery = Challan::query()
             ->with(['route', 'district'])
@@ -73,12 +78,29 @@ class ChallanController extends Controller
 
     public function show(Challan $challan): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewChallans();
 
         return view('challans.show', [
             ...$this->sharedData(),
             'challan' => $challan->load(['route', 'district']),
         ]);
+    }
+
+    public function attachment(Challan $challan): BinaryFileResponse
+    {
+        $this->ensureCanViewChallans();
+
+        abort_unless(
+            filled($challan->challan_image) && Storage::disk('public')->exists($challan->challan_image),
+            404
+        );
+
+        return response()->file(
+            Storage::disk('public')->path($challan->challan_image),
+            [
+                'Content-Disposition' => 'inline; filename="'.basename((string) $challan->challan_image).'"',
+            ]
+        );
     }
 
     public function edit(Challan $challan): View
@@ -128,6 +150,7 @@ class ChallanController extends Controller
         return [
             'routes' => $routes,
             'districts' => District::query()->orderBy('name')->get(),
+            'canViewChallans' => $this->canViewChallans(),
             'canManageChallans' => auth()->user()?->isSuperadmin() ?? false,
             'stats' => [
                 'total' => Challan::count(),
@@ -140,6 +163,18 @@ class ChallanController extends Controller
     private function ensureSuperadmin(): void
     {
         abort_unless(auth()->user()?->isSuperadmin(), 403);
+    }
+
+    private function ensureCanViewChallans(): void
+    {
+        abort_unless($this->canViewChallans(), 403);
+    }
+
+    private function canViewChallans(): bool
+    {
+        $user = auth()->user();
+
+        return ($user?->isSuperadmin() ?? false) || ($user?->isNatcoDepartmentUser() ?? false);
     }
 
     private function hydrateRouteSnapshot(array $payload): array

@@ -113,7 +113,7 @@
                             <th>Ending Point</th>
                             <th>District</th>
                             <th>Image/PDF</th>
-                            @if ($canManageChallans)
+                            @if ($canViewChallans)
                                 <th class="text-center">Action</th>
                             @endif
                         </tr>
@@ -134,7 +134,7 @@
                                             class="challan-view-btn"
                                             data-bs-toggle="modal"
                                             data-bs-target="#challanImageModal"
-                                            data-challan-image="{{ asset('storage/'.$challan->challan_image) }}"
+                                            data-challan-image="{{ route('challans.attachment', $challan) }}"
                                             data-challan-title="Challan #{{ $challan->id }}"
                                             data-challan-type="{{ str_ends_with(strtolower($challan->challan_image), '.pdf') ? 'pdf' : 'image' }}"
                                         >
@@ -145,28 +145,30 @@
                                         <span class="text-muted">No Image</span>
                                     @endif
                                 </td>
-                                @if ($canManageChallans)
+                                @if ($canViewChallans)
                                     <td class="text-center text-nowrap">
                                         <div class="action-stack justify-content-center">
                                             <a href="{{ route('challans.show', $challan) }}" class="action-btn btn-view" title="View Challan">
                                                 <i class="fa-solid fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('challans.edit', $challan) }}" class="action-btn btn-edit" title="Edit Challan">
-                                                <i class="fa-solid fa-pen-to-square"></i>
-                                            </a>
-                                            <form action="{{ route('challans.destroy', $challan) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this challan record?">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn btn-vacate border-0" title="Delete Challan">
-                                                    <i class="fa-solid fa-trash-can"></i>
-                                                </button>
-                                            </form>
+                                            @if ($canManageChallans)
+                                                <a href="{{ route('challans.edit', $challan) }}" class="action-btn btn-edit" title="Edit Challan">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </a>
+                                                <form action="{{ route('challans.destroy', $challan) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this challan record?">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="action-btn btn-vacate border-0" title="Delete Challan">
+                                                        <i class="fa-solid fa-trash-can"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 @endif
                             </tr>
                         @empty
-                            <tr><td colspan="{{ $canManageChallans ? 8 : 7 }}" class="text-center text-muted py-4">No challans found yet.</td></tr>
+                            <tr><td colspan="{{ $canViewChallans ? 8 : 7 }}" class="text-center text-muted py-4">No challans found yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

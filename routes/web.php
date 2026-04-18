@@ -76,6 +76,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/challans/create', [ChallanController::class, 'create'])->name('challans.create');
     Route::get('/challans/route-details', [ChallanController::class, 'routeDetails'])->name('challans.route-details');
     Route::post('/challans', [ChallanController::class, 'store'])->name('challans.store');
+    Route::get('/challans/{challan}/attachment', [ChallanController::class, 'attachment'])->name('challans.attachment');
     Route::get('/challans/{challan}', [ChallanController::class, 'show'])->name('challans.show');
     Route::get('/challans/{challan}/edit', [ChallanController::class, 'edit'])->name('challans.edit');
     Route::put('/challans/{challan}', [ChallanController::class, 'update'])->name('challans.update');

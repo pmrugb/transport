@@ -58,6 +58,18 @@
             </li>
             
             @if ($paymentsOnlySidebar)
+                <li class="nav-item nav-item-group {{ request()->routeIs('challans.*') ? 'open' : '' }}">
+                    <button class="nav-link nav-link-group-toggle {{ request()->routeIs('challans.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopChallansMenu" aria-expanded="{{ request()->routeIs('challans.*') ? 'true' : 'false' }}" aria-controls="desktopChallansMenu">
+                        <span class="nav-link-icon"><i class="fa-solid fa-file-circle-check app-icon"></i></span>
+                        <span class="nav-link-text">Challans</span>
+                        <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
+                    </button>
+                    <div class="collapse {{ request()->routeIs('challans.*') ? 'show' : '' }}" id="desktopChallansMenu" data-bs-parent="#desktopSidebarAccordion">
+                        <div class="app-sidebar-submenu">
+                            <a class="app-sidebar-sublink {{ request()->routeIs('challans.index') || request()->routeIs('challans.show') ? 'active' : '' }}" href="{{ route('challans.index') }}"><i class="fa-solid fa-list app-icon"></i> <span class="nav-link-text">All Challans</span></a>
+                        </div>
+                    </div>
+                </li>
                 <li class="nav-item nav-item-group {{ request()->routeIs('settings.profile.*') ? 'open' : '' }}">
                     <button class="nav-link nav-link-group-toggle {{ request()->routeIs('settings.profile.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopNatcoSettingsMenu" aria-expanded="{{ request()->routeIs('settings.profile.*') ? 'true' : 'false' }}" aria-controls="desktopNatcoSettingsMenu">
                         <span class="nav-link-icon"><i class="fa-solid fa-gear app-icon"></i></span>
