@@ -7,6 +7,14 @@
             <h1 class="page-title">Edit Vehicle</h1>
             <p class="page-subtitle">Update the selected vehicle record.</p>
         </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" href="{{ route('vehicles.index') }}">Back to Vehicles</a>
+            <form action="{{ route('vehicles.destroy', $vehicle) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete <strong>{{ e($vehicle->registration_no) }}</strong>?">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger">Delete Vehicle</button>
+            </form>
+        </div>
     </div>
 
     <section class="row g-4 stats-overlap">

@@ -163,6 +163,32 @@ class OperatorController extends Controller
     {
         $this->ensureSuperadmin();
 
+        $linkedVehicles = $operator->vehicles()
+            ->select(['id', 'registration_no'])
+            ->orderBy('registration_no')
+            ->get();
+        $linkedVehiclesCount = $linkedVehicles->count();
+
+        if ($linkedVehiclesCount > 0) {
+            return redirect()->route('transporters.index')
+                ->with('delete_blocked', [
+                    'entity' => 'transporter',
+                    'name' => $operator->name,
+                    'message' => $linkedVehiclesCount === 1
+                        ? 'This transporter cannot be deleted because a vehicle is still assigned to it.'
+                        : 'This transporter cannot be deleted because vehicles are still assigned to it.',
+                    'guidance' => $linkedVehiclesCount === 1
+                        ? 'Delete or reassign the vehicle below first, then try again.'
+                        : 'Delete or reassign the following vehicles first, then try again.',
+                    'vehicle_count' => $linkedVehiclesCount,
+                    'vehicles' => $linkedVehicles
+                        ->map(fn ($vehicle): array => [
+                            'id' => $vehicle->id,
+                            'registration_no' => $vehicle->registration_no,
+                        ])->all(),
+                ]);
+        }
+
         $operator->delete();
 
         return redirect()->route('transporters.index')

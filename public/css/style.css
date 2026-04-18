@@ -1627,11 +1627,13 @@ body {
   background: #f8fafc;
 }
 
-#deleteConfirmModal .modal-dialog {
+#deleteConfirmModal .modal-dialog,
+#deleteBlockedModal .modal-dialog {
   max-width: 520px;
 }
 
-#deleteConfirmModal .modal-content {
+#deleteConfirmModal .modal-content,
+#deleteBlockedModal .modal-content {
   border: 0;
   border-radius: 1.35rem;
   overflow: hidden;
@@ -1639,14 +1641,16 @@ body {
   background: #fff;
 }
 
-#deleteConfirmModal .modal-header {
+#deleteConfirmModal .modal-header,
+#deleteBlockedModal .modal-header {
   padding: 0.95rem 1.15rem;
   background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
   border-bottom: 1px solid #dfe7f1;
   justify-content: space-between;
 }
 
-#deleteConfirmModal .modal-title {
+#deleteConfirmModal .modal-title,
+#deleteBlockedModal .modal-title {
   color: #223a35;
   font-size: 1rem;
   font-weight: 800;
@@ -1654,19 +1658,22 @@ body {
   letter-spacing: -0.02em;
 }
 
-#deleteConfirmModal .modal-body {
+#deleteConfirmModal .modal-body,
+#deleteBlockedModal .modal-body {
   padding: 1.15rem 1.15rem 1rem;
   color: #53627b;
   font-size: 0.95rem;
   line-height: 1.45;
 }
 
-#deleteConfirmModal .modal-body strong {
+#deleteConfirmModal .modal-body strong,
+#deleteBlockedModal .modal-body strong {
   color: #435066;
   font-weight: 800;
 }
 
-#deleteConfirmModal .modal-footer {
+#deleteConfirmModal .modal-footer,
+#deleteBlockedModal .modal-footer {
   padding: 0.9rem 1.15rem 1rem;
   border-top: 1px solid #dfe7f1;
   gap: 0.65rem;
@@ -1674,7 +1681,9 @@ body {
 }
 
 #deleteConfirmModal .btn-secondary,
-#deleteConfirmModal .btn-danger {
+#deleteConfirmModal .btn-danger,
+#deleteBlockedModal .btn-secondary,
+#deleteBlockedModal .btn-danger {
   border: 0;
   border-radius: 0.58rem;
   font-size: 0.82rem;
@@ -1684,29 +1693,36 @@ body {
   box-shadow: none;
 }
 
-#deleteConfirmModal .btn-secondary {
+#deleteConfirmModal .btn-secondary,
+#deleteBlockedModal .btn-secondary {
   background: #56637a;
   border-color: #56637a;
 }
 
 #deleteConfirmModal .btn-secondary:hover,
-#deleteConfirmModal .btn-secondary:focus {
+#deleteConfirmModal .btn-secondary:focus,
+#deleteBlockedModal .btn-secondary:hover,
+#deleteBlockedModal .btn-secondary:focus {
   background: #4a566c;
   border-color: #4a566c;
 }
 
-#deleteConfirmModal .btn-danger {
+#deleteConfirmModal .btn-danger,
+#deleteBlockedModal .btn-danger {
   background: #d5444c;
   border-color: #d5444c;
 }
 
 #deleteConfirmModal .btn-danger:hover,
-#deleteConfirmModal .btn-danger:focus {
+#deleteConfirmModal .btn-danger:focus,
+#deleteBlockedModal .btn-danger:hover,
+#deleteBlockedModal .btn-danger:focus {
   background: #c63a42;
   border-color: #c63a42;
 }
 
-#deleteConfirmModal .btn-close {
+#deleteConfirmModal .btn-close,
+#deleteBlockedModal .btn-close {
   padding: 0.1rem;
   margin: 0;
   opacity: 0.7;
@@ -1714,24 +1730,49 @@ body {
 }
 
 #deleteConfirmModal .btn-close:hover,
-#deleteConfirmModal .btn-close:focus {
+#deleteConfirmModal .btn-close:focus,
+#deleteBlockedModal .btn-close:hover,
+#deleteBlockedModal .btn-close:focus {
   opacity: 1;
 }
 
+#deleteBlockedModal .btn-outline-secondary {
+  border-radius: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.42rem 0.78rem;
+  color: #56637a;
+  border-color: #c5ceda;
+  background: #fff;
+  min-width: 0;
+}
+
+#deleteBlockedModal .btn-outline-secondary:hover,
+#deleteBlockedModal .btn-outline-secondary:focus {
+  color: #4a566c;
+  border-color: #b7c2cf;
+  background: #f7f9fc;
+}
+
 @media (max-width: 991.98px) {
-  #deleteConfirmModal .modal-dialog {
+  #deleteConfirmModal .modal-dialog,
+  #deleteBlockedModal .modal-dialog {
     max-width: calc(100vw - 1rem);
     margin: 0.5rem auto;
   }
 
   #deleteConfirmModal .modal-header,
   #deleteConfirmModal .modal-body,
-  #deleteConfirmModal .modal-footer {
+  #deleteConfirmModal .modal-footer,
+  #deleteBlockedModal .modal-header,
+  #deleteBlockedModal .modal-body,
+  #deleteBlockedModal .modal-footer {
     padding-left: 1rem;
     padding-right: 1rem;
   }
 
-  #deleteConfirmModal .modal-footer {
+  #deleteConfirmModal .modal-footer,
+  #deleteBlockedModal .modal-footer {
     padding-top: 0.85rem;
     padding-bottom: 0.9rem;
   }
