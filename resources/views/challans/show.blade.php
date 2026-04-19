@@ -39,7 +39,7 @@
                         <div class="col-md-6">
                             <div class="info-tile h-100">
                                 <p class="mini-note mb-2">Route</p>
-                                <p class="fw-semibold mb-0">{{ $challan->route?->route_name ?: 'N/A' }}</p>
+                                <p class="fw-semibold mb-0">{{ $challan->route?->route_name ?: 'All Routes' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">

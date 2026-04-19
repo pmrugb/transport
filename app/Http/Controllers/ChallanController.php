@@ -179,6 +179,15 @@ class ChallanController extends Controller
 
     private function hydrateRouteSnapshot(array $payload): array
     {
+        if (blank($payload['route_id'] ?? null)) {
+            $payload['route_id'] = null;
+            $payload['starting_point'] = 'All Routes';
+            $payload['ending_point'] = 'All Routes';
+            $payload['district_id'] = null;
+
+            return $payload;
+        }
+
         $route = TransportRoute::query()->findOrFail((int) $payload['route_id']);
 
         $payload['starting_point'] = $route->starting_point;

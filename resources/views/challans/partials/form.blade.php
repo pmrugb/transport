@@ -107,8 +107,8 @@
         </div>
         <div class="col-md-6">
             <label class="form-label fw-semibold" for="route_id">Route</label>
-            <select class="form-select @error('route_id') is-invalid @enderror" id="route_id" name="route_id" data-placeholder="Select route" required>
-                <option value="">Select route</option>
+            <select class="form-select @error('route_id') is-invalid @enderror" id="route_id" name="route_id">
+                <option value="all_routes" @selected(blank(old('route_id', $challan->route_id)))>All Routes</option>
                 @foreach ($routes as $route)
                     <option value="{{ $route->id }}" @selected((string) old('route_id', $challan->route_id) === (string) $route->id)>{{ $route->route_name }} ({{ $route->starting_point }} to {{ $route->ending_point }})</option>
                 @endforeach
@@ -192,9 +192,9 @@
             const syncRouteDetails = function () {
                 const routeId = routeField.value;
 
-                if (!routeId) {
-                    startingPointField.value = '';
-                    endingPointField.value = '';
+                if (!routeId || routeId === 'all_routes') {
+                    startingPointField.value = 'All Routes';
+                    endingPointField.value = 'All Routes';
                     districtField.value = '';
                     return;
                 }

@@ -123,7 +123,7 @@
                             <tr>
                                 <td class="text-nowrap">{{ $challans->firstItem() + $loop->index }}</td>
                                 <td class="text-nowrap">{{ optional($challan->challan_date)->format('d-m-Y') }}</td>
-                                <td class="fw-semibold text-nowrap">{{ $challan->route?->route_name ?: 'N/A' }}</td>
+                                <td class="fw-semibold text-nowrap">{{ $challan->route?->route_name ?: 'All Routes' }}</td>
                                 <td class="text-nowrap">{{ $challan->starting_point }}</td>
                                 <td class="text-nowrap">{{ $challan->ending_point }}</td>
                                 <td class="text-nowrap">{{ $challan->district?->name ?: 'N/A' }}</td>
