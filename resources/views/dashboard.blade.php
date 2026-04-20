@@ -276,7 +276,7 @@
                                 <th>Fare</th>
                                 <th>Total</th>
                                 <th>Status</th>
-                                @if ($canManageTrips)
+                                @if ($canEditTrips || $canDeleteTrips)
                                     <th class="text-center">Action</th>
                                 @endif
                             </tr>
@@ -293,28 +293,32 @@
                                     <td>{{ number_format((float) $trip->fare_amount, 2) }}</td>
                                     <td>{{ number_format((float) $trip->total_amount, 2) }}</td>
                                     <td>{{ $tripStatuses[$trip->status] ?? ucfirst($trip->status) }}</td>
-                                    @if ($canManageTrips)
+                                    @if ($canEditTrips || $canDeleteTrips)
                                         <td class="text-center text-nowrap">
                                             <div class="action-stack justify-content-center">
                                                 <a href="{{ route('trips.show', $trip) }}" class="action-btn btn-view" title="View Trip">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a href="{{ route('trips.edit', $trip) }}" class="action-btn btn-edit" title="Edit Trip">
-                                                    <i class="fa-solid fa-pen-to-square"></i>
-                                                </a>
-                                                <form action="{{ route('trips.destroy', $trip) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this trip record?">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="action-btn btn-vacate border-0" title="Delete Trip">
-                                                        <i class="fa-solid fa-trash-can"></i>
-                                                    </button>
-                                                </form>
+                                                @if ($canEditTrips)
+                                                    <a href="{{ route('trips.edit', $trip) }}" class="action-btn btn-edit" title="Edit Trip">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </a>
+                                                @endif
+                                                @if ($canDeleteTrips)
+                                                    <form action="{{ route('trips.destroy', $trip) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this trip record?">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="action-btn btn-vacate border-0" title="Delete Trip">
+                                                            <i class="fa-solid fa-trash-can"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     @endif
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ $canManageTrips ? 10 : 9 }}" class="text-center text-muted py-4">No trips found yet.</td></tr>
+                                <tr><td colspan="{{ ($canEditTrips || $canDeleteTrips) ? 10 : 9 }}" class="text-center text-muted py-4">No trips found yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

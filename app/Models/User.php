@@ -21,6 +21,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, PreservesUniqueFieldsOnSoftDelete, SoftDeletes;
 
     public const NATCO_EMAIL = 'natco@pmrugb.gov.pk';
+    public const NATCO_ADMIN_EMAIL = 'natcoadmin@pmrugb.gov.pk';
 
     /**
      * Get the attributes that should be cast.
@@ -56,7 +57,35 @@ class User extends Authenticatable
 
     public function isNatcoDepartmentUser(): bool
     {
-        return strtolower((string) $this->email) === self::NATCO_EMAIL;
+        return in_array(strtolower((string) $this->email), [
+            self::NATCO_EMAIL,
+            self::NATCO_ADMIN_EMAIL,
+        ], true);
+    }
+
+    public function isNatcoAdminUser(): bool
+    {
+        return strtolower((string) $this->email) === self::NATCO_ADMIN_EMAIL;
+    }
+
+    public function canViewTripsModule(): bool
+    {
+        return $this->isSuperadmin() || $this->isNatcoAdminUser();
+    }
+
+    public function canCreateTrips(): bool
+    {
+        return ! $this->isNatcoDepartmentUser() || $this->isNatcoAdminUser();
+    }
+
+    public function canEditTrips(): bool
+    {
+        return $this->canViewTripsModule();
+    }
+
+    public function canDeleteTrips(): bool
+    {
+        return $this->isSuperadmin();
     }
 
     public function departmentalNavLabel(): ?string

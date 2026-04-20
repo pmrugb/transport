@@ -88,7 +88,9 @@ class DashboardController extends Controller
 
             return view('dashboard', [
                 'isNatcoDashboard' => true,
-                'canManageTrips' => auth()->user()?->isSuperadmin() ?? false,
+                'canCreateTrips' => auth()->user()?->canCreateTrips() ?? false,
+                'canEditTrips' => auth()->user()?->canEditTrips() ?? false,
+                'canDeleteTrips' => auth()->user()?->canDeleteTrips() ?? false,
                 'canManagePayments' => auth()->user()?->canManagePayments() ?? false,
                 'tripStatuses' => TripDetail::STATUSES,
                 'stats' => [
@@ -176,7 +178,9 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'isNatcoDashboard' => false,
-            'canManageTrips' => auth()->user()?->isSuperadmin() ?? false,
+            'canCreateTrips' => auth()->user()?->canCreateTrips() ?? false,
+            'canEditTrips' => auth()->user()?->canEditTrips() ?? false,
+            'canDeleteTrips' => auth()->user()?->canDeleteTrips() ?? false,
             'tripStatuses' => TripDetail::STATUSES,
             'stats' => [
                 'totalOperators' => (int) ($operatorStats?->total ?? 0),

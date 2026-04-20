@@ -312,6 +312,53 @@ class PaymentController extends Controller
                         ->orWhereHas('transporter', fn ($transporterQuery) => $transporterQuery->where('district_id', $districtId));
                 });
             })
+            ->when($filters['search'], function ($query, $search) {
+                $normalizedSearch = preg_replace('/\D+/', '', (string) $search);
+
+                $query->where(function ($nestedQuery) use ($search, $normalizedSearch) {
+                    $nestedQuery
+                        ->whereHas('trip', function ($tripQuery) use ($search, $normalizedSearch) {
+                            $tripQuery->where(function ($tripSearchQuery) use ($search, $normalizedSearch) {
+                                $tripSearchQuery
+                                    ->whereDate('trip_date', $search)
+                                    ->orWhere('driver_name', 'like', "%{$search}%")
+                                    ->orWhere('driver_mobile', 'like', "%{$search}%");
+
+                                if ($normalizedSearch !== '') {
+                                    $tripSearchQuery->orWhereRaw("REPLACE(REPLACE(driver_cnic, '-', ''), ' ', '') like ?", ["%{$normalizedSearch}%"]);
+                                } else {
+                                    $tripSearchQuery->orWhere('driver_cnic', 'like', "%{$search}%");
+                                }
+                            });
+                        })
+                        ->orWhereHas('transporter', function ($transporterQuery) use ($search, $normalizedSearch) {
+                            $transporterQuery->where(function ($transporterSearchQuery) use ($search, $normalizedSearch) {
+                                $transporterSearchQuery
+                                    ->where('name', 'like', "%{$search}%")
+                                    ->orWhere('phone', 'like', "%{$search}%")
+                                    ->orWhere('address', 'like', "%{$search}%");
+
+                                if ($normalizedSearch !== '') {
+                                    $transporterSearchQuery->orWhereRaw("REPLACE(REPLACE(cnic, '-', ''), ' ', '') like ?", ["%{$normalizedSearch}%"]);
+                                } else {
+                                    $transporterSearchQuery->orWhere('cnic', 'like', "%{$search}%");
+                                }
+                            });
+                        })
+                        ->orWhereHas('vehicle', fn ($vehicleQuery) => $vehicleQuery->where('registration_no', 'like', "%{$search}%"))
+                        ->orWhereHas('route', function ($routeQuery) use ($search) {
+                            $routeQuery->where(function ($routeSearchQuery) use ($search) {
+                                $routeSearchQuery
+                                    ->where('route_name', 'like', "%{$search}%")
+                                    ->orWhere('starting_point', 'like', "%{$search}%")
+                                    ->orWhere('ending_point', 'like', "%{$search}%");
+                            });
+                        })
+                        ->orWhere('no_of_trips', 'like', "%{$search}%")
+                        ->orWhere('fare_amount', 'like', "%{$search}%")
+                        ->orWhere('total_amount', 'like', "%{$search}%");
+                });
+            })
             ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
             ->when($filters['route_id'], fn ($query, $routeId) => $query->where('route_id', $routeId))
             ->when($filters['from_date'], fn ($query, $fromDate) => $query->whereHas('trip', fn ($tripQuery) => $tripQuery->whereDate('trip_date', '>=', $fromDate)))
@@ -327,6 +374,7 @@ class PaymentController extends Controller
             'district_id' => $request->integer('district_id') ?: null,
             'transporter_id' => $request->integer('transporter_id') ?: null,
             'route_id' => $request->integer('route_id') ?: null,
+            'search' => trim((string) $request->input('search', '')) ?: null,
             'from_date' => $request->input('from_date'),
             'to_date' => $request->input('to_date'),
         ];

@@ -142,20 +142,11 @@
                                 </select>
                             </div>
                             <div class="col-md-6 col-lg-3">
-                                <label class="form-label fw-semibold" for="department_id">Department</label>
-                                <select class="form-select" id="department_id" name="department_id">
-                                    <option value="">All departments</option>
-                                    @foreach ($departments as $department)
-                                        <option value="{{ $department->id }}" @selected((string) $filters['department_id'] === (string) $department->id)>{{ $department->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6 col-lg-3">
-                                <label class="form-label fw-semibold" for="route_id">Route</label>
+                                <label class="form-label fw-semibold" for="route_id">Route Name</label>
                                 <select class="form-select" id="route_id" name="route_id">
                                     <option value="">All routes</option>
                                     @foreach ($routes as $route)
-                                        <option value="{{ $route->id }}" @selected((string) $filters['route_id'] === (string) $route->id)>{{ $route->route_name }}</option>
+                                        <option value="{{ $route->id }}" @selected((string) $filters['route_id'] === (string) $route->id)>{{ $route->route_name }} ({{ $route->starting_point ?: 'N/A' }} → {{ $route->ending_point ?: 'N/A' }})</option>
                                     @endforeach
                                 </select>
                             </div>

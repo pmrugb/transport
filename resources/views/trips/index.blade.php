@@ -2,6 +2,71 @@
 
 @section('content')
     <style>
+        .trip-filter-card {
+            border-radius: 1rem;
+        }
+
+        .trip-filter-card .card-header {
+            padding: 0.8rem 0.95rem;
+            border-bottom-width: 1px;
+        }
+
+        .trip-filter-card .card-body {
+            padding: 0.85rem 0.95rem 0.95rem;
+        }
+
+        .trip-filter-card .form-label {
+            font-size: 0.82rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .trip-filter-card .form-control,
+        .trip-filter-card .form-select {
+            min-height: 40px;
+            border-radius: 0.8rem;
+            font-size: 0.88rem;
+            padding-top: 0.45rem;
+            padding-bottom: 0.45rem;
+        }
+
+        .trip-filter-grid {
+            row-gap: 0.7rem;
+        }
+
+        .trip-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .trip-filter-title {
+            margin: 0;
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #2c3a4d;
+        }
+
+        .trip-filter-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .trip-filter-actions .btn {
+            min-width: 0;
+            padding: 0.65rem 0.8rem;
+            border-radius: 0.75rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .trip-filter-actions .btn-outline-secondary {
+            min-width: 94px;
+        }
+
         .export-columns-toggle {
             cursor: pointer;
             font-size: 0.82rem;
@@ -34,9 +99,11 @@
             <h1 class="page-title">All Trips</h1>
             <p class="page-subtitle">Track submitted trips, operational assignments, fare values, and funding linkage in one directory.</p>
         </div>
-        <a class="btn btn-success" href="{{ route('trips.create') }}">
-            <i class="fa-solid fa-plus me-2"></i>Add Trip
-        </a>
+        @if ($canCreateTrips)
+            <a class="btn btn-success" href="{{ route('trips.create') }}">
+                <i class="fa-solid fa-plus me-2"></i>Add Trip
+            </a>
+        @endif
     </div>
 
     <section class="row g-4 stats-overlap">
@@ -52,6 +119,12 @@
                     <div class="card-body">
                         <form method="GET" class="d-flex flex-column gap-3">
                             <input type="hidden" name="search" value="{{ $filters['search'] }}">
+                            <input type="hidden" name="status" value="{{ $filters['status'] }}">
+                            <input type="hidden" name="district_id" value="{{ $filters['district_id'] }}">
+                            <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
+                            <input type="hidden" name="route_id" value="{{ $filters['route_id'] }}">
+                            <input type="hidden" name="from_date" value="{{ $filters['from_date'] }}">
+                            <input type="hidden" name="to_date" value="{{ $filters['to_date'] }}">
                             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                                 <div>
                                     <h3 class="section-title mb-1">Export Trips</h3>
@@ -85,6 +158,68 @@
                         </form>
                     </div>
                 </div>
+                <div class="card section-card trip-filter-card mb-4">
+                    <div class="card-header">
+                        <div class="trip-toolbar">
+                            <h3 class="trip-filter-title">Filters</h3>
+                            <div class="trip-filter-actions">
+                                <button class="btn btn-success" form="tripFilters" type="submit"><i class="fa-solid fa-filter me-2"></i>Apply Filters</button>
+                                <a class="btn btn-outline-secondary" href="{{ route('trips.index') }}"><i class="fa-solid fa-rotate-right me-2"></i>Reset</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="{{ route('trips.index') }}" id="tripFilters">
+                            <input type="hidden" name="search" value="{{ $filters['search'] }}">
+                            <div class="row trip-filter-grid">
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold" for="status">Status</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="">All statuses</option>
+                                        @foreach ($statuses as $value => $label)
+                                            <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold" for="district_id">District</label>
+                                    <select class="form-select" id="district_id" name="district_id">
+                                        <option value="">All districts</option>
+                                        @foreach ($districts as $district)
+                                            <option value="{{ $district->id }}" @selected((string) $filters['district_id'] === (string) $district->id)>{{ $district->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold" for="transporter_id">Transporter</label>
+                                    <select class="form-select" id="transporter_id" name="transporter_id">
+                                        <option value="">All transporters</option>
+                                        @foreach ($transporters as $transporter)
+                                            <option value="{{ $transporter->id }}" @selected((string) $filters['transporter_id'] === (string) $transporter->id)>{{ $transporter->name }}{{ $transporter->cnic ? ' - '.$transporter->cnic : '' }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold" for="route_id">Route</label>
+                                    <select class="form-select" id="route_id" name="route_id">
+                                        <option value="">All routes</option>
+                                        @foreach ($routes as $route)
+                                            <option value="{{ $route->id }}" @selected((string) $filters['route_id'] === (string) $route->id)>{{ $route->route_name }} ({{ $route->starting_point }} → {{ $route->ending_point }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold" for="from_date">From Date</label>
+                                    <input class="form-control" id="from_date" name="from_date" type="date" value="{{ $filters['from_date'] }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold" for="to_date">To Date</label>
+                                    <input class="form-control" id="to_date" name="to_date" type="date" value="{{ $filters['to_date'] }}">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
                 <div class="card section-card table-card mb-4">
                     <div class="card-header">
                         <div class="table-toolbar align-items-start align-items-md-center">
@@ -93,6 +228,12 @@
                                 <p class="section-copy">Complete listing of trip data entered through the trip management form.</p>
                             </div>
                             <form method="GET" action="{{ route('trips.index') }}" class="ms-md-auto js-live-search-form" data-live-search-target="#tripsResultsRegion">
+                                <input type="hidden" name="status" value="{{ $filters['status'] }}">
+                                <input type="hidden" name="district_id" value="{{ $filters['district_id'] }}">
+                                <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
+                                <input type="hidden" name="route_id" value="{{ $filters['route_id'] }}">
+                                <input type="hidden" name="from_date" value="{{ $filters['from_date'] }}">
+                                <input type="hidden" name="to_date" value="{{ $filters['to_date'] }}">
                                 <div class="input-group input-group-sm" style="max-width: 220px;">
                                     <input
                                         type="search"
@@ -125,7 +266,7 @@
                                         <th>Fare</th>
                                         <th>Total</th>
                                         <th>Status</th>
-                                        @if ($canManageTrips)
+                                        @if ($canEditTrips || $canDeleteTrips)
                                             <th class="text-center">Action</th>
                                         @endif
                                     </tr>
@@ -143,28 +284,32 @@
                                             <td>{{ number_format((float) $trip->fare_amount, 2) }}</td>
                                             <td>{{ number_format((float) $trip->total_amount, 2) }}</td>
                                             <td>{{ $statuses[$trip->status] ?? ucfirst($trip->status) }}</td>
-                                            @if ($canManageTrips)
+                                            @if ($canEditTrips || $canDeleteTrips)
                                                 <td class="text-center text-nowrap">
                                                     <div class="action-stack justify-content-center">
                                                         <a href="{{ route('trips.show', $trip) }}" class="action-btn btn-view" title="View Trip">
                                                             <i class="fa-solid fa-eye"></i>
                                                         </a>
-                                                        <a href="{{ route('trips.edit', $trip) }}" class="action-btn btn-edit" title="Edit Trip">
-                                                            <i class="fa-solid fa-pen-to-square"></i>
-                                                        </a>
-                                                        <form action="{{ route('trips.destroy', $trip) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this trip record?">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="action-btn btn-vacate border-0" title="Delete Trip">
-                                                                <i class="fa-solid fa-trash-can"></i>
-                                                            </button>
-                                                        </form>
+                                                        @if ($canEditTrips)
+                                                            <a href="{{ route('trips.edit', $trip) }}" class="action-btn btn-edit" title="Edit Trip">
+                                                                <i class="fa-solid fa-pen-to-square"></i>
+                                                            </a>
+                                                        @endif
+                                                        @if ($canDeleteTrips)
+                                                            <form action="{{ route('trips.destroy', $trip) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this trip record?">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="action-btn btn-vacate border-0" title="Delete Trip">
+                                                                    <i class="fa-solid fa-trash-can"></i>
+                                                                </button>
+                                                            </form>
+                                                        @endif
                                                     </div>
                                                 </td>
                                             @endif
                                         </tr>
                                     @empty
-                                        <tr><td colspan="{{ $canManageTrips ? 13 : 12 }}" class="text-center text-muted py-4">No trips found yet.</td></tr>
+                                        <tr><td colspan="{{ ($canEditTrips || $canDeleteTrips) ? 13 : 12 }}" class="text-center text-muted py-4">No trips found yet.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>

@@ -34,7 +34,7 @@ class ReportController extends Controller
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'departments' => Department::query()->select(['id', 'name'])->where('status', 'active')->orderBy('name')->get(),
             'transporters' => Operator::query()->select(['id', 'name'])->orderBy('name')->get(),
-            'routes' => TransportRoute::query()->select(['id', 'route_name'])->orderBy('route_name')->get(),
+            'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
             'exportColumns' => $this->reportExportColumns(),
             'selectedExportColumns' => $this->selectedReportExportColumns($request),
             'reports' => $reportsQuery

@@ -34,7 +34,9 @@
                         <div class="collapse {{ request()->routeIs('trips.*') ? 'show' : '' }}" id="mobileTripsMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('trips.index') ? 'active' : '' }}" href="{{ route('trips.index') }}">All Trips</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('trips.create') ? 'active' : '' }}" href="{{ route('trips.create') }}">Add Trip</a>
+                                @if (auth()->user()?->canCreateTrips())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('trips.create') ? 'active' : '' }}" href="{{ route('trips.create') }}">Add Trip</a>
+                                @endif
                             </div>
                         </div>
                     </li>
@@ -64,6 +66,23 @@
                     </div>
                 </li>
                 @if ($paymentsOnlySidebar)
+                    @if (auth()->user()?->canViewTripsModule())
+                        <li class="nav-item nav-item-group {{ request()->routeIs('trips.*') ? 'open' : '' }}">
+                            <button class="nav-link nav-link-group-toggle {{ request()->routeIs('trips.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNatcoTripsMenu" aria-expanded="{{ request()->routeIs('trips.*') ? 'true' : 'false' }}" aria-controls="mobileNatcoTripsMenu">
+                                <span class="nav-link-icon"><i class="fa-solid fa-road-circle-check app-icon"></i></span>
+                                <span class="nav-link-text">Trip Management</span>
+                                <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
+                            </button>
+                            <div class="collapse {{ request()->routeIs('trips.*') ? 'show' : '' }}" id="mobileNatcoTripsMenu" data-bs-parent="#mobileSidebarAccordion">
+                                <div class="app-sidebar-submenu">
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('trips.index') ? 'active' : '' }}" href="{{ route('trips.index') }}">All Trips</a>
+                                    @if (auth()->user()?->canCreateTrips())
+                                        <a class="app-sidebar-sublink {{ request()->routeIs('trips.create') ? 'active' : '' }}" href="{{ route('trips.create') }}">Add Trip</a>
+                                    @endif
+                                </div>
+                            </div>
+                        </li>
+                    @endif
                     <li class="nav-item nav-item-group {{ request()->routeIs('challans.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('challans.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileChallansMenu" aria-expanded="{{ request()->routeIs('challans.*') ? 'true' : 'false' }}" aria-controls="mobileChallansMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-file-circle-check app-icon"></i></span>

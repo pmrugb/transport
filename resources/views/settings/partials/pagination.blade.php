@@ -13,12 +13,25 @@
     }
 @endphp
 
+@php
+    $queryWithoutPerPageAndPage = request()->except(['per_page', 'page']);
+@endphp
+
 <div class="table-pagination-bar">
     <div class="table-pagination-summary">
         Showing {{ $paginator->firstItem() ?? 0 }} to {{ $paginator->lastItem() ?? 0 }} of {{ $paginator->total() }} entries
     </div>
 
     <form method="get" class="table-per-page-form">
+        @foreach ($queryWithoutPerPageAndPage as $key => $value)
+            @if (is_array($value))
+                @foreach ($value as $item)
+                    <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
+                @endforeach
+            @else
+                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+            @endif
+        @endforeach
         <select class="form-select table-per-page-select" name="per_page" onchange="this.form.submit()">
             @foreach ([10, 25, 50, 100, 'all'] as $option)
                 <option value="{{ $option }}" @selected((string) $perPage === (string) $option)>{{ $option === 'all' ? 'All' : $option }}</option>

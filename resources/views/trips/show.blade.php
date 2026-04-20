@@ -12,7 +12,7 @@
             @if ($trip->tripCost)
                 <a class="btn btn-outline-success" href="{{ route('payments.show', $trip->tripCost) }}">View Payment</a>
             @endif
-            @if ($canManageTrips)
+            @if ($canEditTrips)
                 <a class="btn btn-warning" href="{{ route('trips.edit', $trip) }}">Edit Trip</a>
             @endif
         </div>

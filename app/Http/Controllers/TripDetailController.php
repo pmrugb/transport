@@ -146,12 +146,28 @@ class TripDetailController extends Controller
             'rows' => $rows,
             'filters' => [
                 'Search' => $this->filterValues($request)['search'],
+                'Status' => $this->filterValues($request)['status']
+                    ? (TripDetail::STATUSES[$this->filterValues($request)['status']] ?? ucfirst((string) $this->filterValues($request)['status']))
+                    : null,
+                'District' => $this->filterValues($request)['district_id']
+                    ? District::query()->whereKey($this->filterValues($request)['district_id'])->value('name')
+                    : null,
+                'Transporter' => $this->filterValues($request)['transporter_id']
+                    ? Operator::query()->whereKey($this->filterValues($request)['transporter_id'])->value('name')
+                    : null,
+                'Route' => $this->filterValues($request)['route_id']
+                    ? TransportRoute::query()->whereKey($this->filterValues($request)['route_id'])->value('route_name')
+                    : null,
+                'From Date' => $this->filterValues($request)['from_date'],
+                'To Date' => $this->filterValues($request)['to_date'],
             ],
         ]);
     }
 
     public function create(): View
     {
+        $this->ensureCanCreateTrips();
+
         return view('trips.create', [
             ...$this->sharedData(),
             'trip' => new TripDetail([
@@ -179,12 +195,14 @@ class TripDetailController extends Controller
         return view('trips.show', [
             'trip' => $trip,
             'statuses' => TripDetail::STATUSES,
-            'canManageTrips' => auth()->user()?->isSuperadmin() ?? false,
+            'canEditTrips' => auth()->user()?->canEditTrips() ?? false,
         ]);
     }
 
     public function store(StoreTripDetailRequest $request): RedirectResponse
     {
+        $this->ensureCanCreateTrips();
+
         $payload = $request->validated();
         $payload['department_id'] = $this->resolveDepartmentId($request, $payload);
         ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
@@ -203,7 +221,7 @@ class TripDetailController extends Controller
 
     public function edit(TripDetail $trip): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanEditTrips();
 
         return view('trips.edit', [
             ...$this->sharedData(),
@@ -216,7 +234,7 @@ class TripDetailController extends Controller
 
     public function update(StoreTripDetailRequest $request, TripDetail $trip): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanEditTrips();
 
         $payload = $request->validated();
         $payload['department_id'] = $this->resolveDepartmentId($request, $payload, $trip);
@@ -235,7 +253,7 @@ class TripDetailController extends Controller
 
     public function destroy(TripDetail $trip): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanDeleteTrips();
 
         DB::transaction(function () use ($trip): void {
             $trip->tripCost()?->delete();
@@ -332,7 +350,9 @@ class TripDetailController extends Controller
             'fares' => $fares,
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'statuses' => TripDetail::STATUSES,
-            'canManageTrips' => auth()->user()?->isSuperadmin() ?? false,
+            'canCreateTrips' => auth()->user()?->canCreateTrips() ?? false,
+            'canEditTrips' => auth()->user()?->canEditTrips() ?? false,
+            'canDeleteTrips' => auth()->user()?->canDeleteTrips() ?? false,
             'stats' => [
                 'total' => (int) ($stats?->total ?? 0),
                 'today' => (int) ($stats?->today ?? 0),
@@ -342,9 +362,19 @@ class TripDetailController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanCreateTrips(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canCreateTrips(), 403);
+    }
+
+    private function ensureCanEditTrips(): void
+    {
+        abort_unless(auth()->user()?->canEditTrips(), 403);
+    }
+
+    private function ensureCanDeleteTrips(): void
+    {
+        abort_unless(auth()->user()?->canDeleteTrips(), 403);
     }
 
     private function filteredTripsQuery(Request $request)
@@ -376,17 +406,41 @@ class TripDetailController extends Controller
             ])
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $search = $filters['search'];
+                $normalizedSearch = preg_replace('/\D+/', '', $search);
 
-                $query->where(function ($nestedQuery) use ($search) {
+                $query->where(function ($nestedQuery) use ($search, $normalizedSearch) {
                     $nestedQuery
                         ->where('driver_name', 'like', "%{$search}%")
                         ->orWhere('driver_mobile', 'like', "%{$search}%")
+                        ->orWhere(function ($driverCnicQuery) use ($search, $normalizedSearch) {
+                            if ($normalizedSearch !== '') {
+                                $driverCnicQuery->whereRaw("REPLACE(REPLACE(driver_cnic, '-', ''), ' ', '') like ?", ["%{$normalizedSearch}%"]);
+                            } else {
+                                $driverCnicQuery->where('driver_cnic', 'like', "%{$search}%");
+                            }
+                        })
                         ->orWhereHas('vehicle', fn ($vehicleQuery) => $vehicleQuery->where('registration_no', 'like', "%{$search}%"))
                         ->orWhereHas('route', fn ($routeQuery) => $routeQuery->where('route_name', 'like', "%{$search}%"))
-                        ->orWhereHas('transporter', fn ($transporterQuery) => $transporterQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('transporter', function ($transporterQuery) use ($search, $normalizedSearch) {
+                            $transporterQuery->where(function ($transporterSearchQuery) use ($search, $normalizedSearch) {
+                                $transporterSearchQuery->where('name', 'like', "%{$search}%");
+
+                                if ($normalizedSearch !== '') {
+                                    $transporterSearchQuery->orWhereRaw("REPLACE(REPLACE(cnic, '-', ''), ' ', '') like ?", ["%{$normalizedSearch}%"]);
+                                } else {
+                                    $transporterSearchQuery->orWhere('cnic', 'like', "%{$search}%");
+                                }
+                            });
+                        })
                         ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
                 });
             })
+            ->when($filters['status'], fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['district_id'], fn ($query, $districtId) => $query->where('district_id', $districtId))
+            ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
+            ->when($filters['route_id'], fn ($query, $routeId) => $query->where('route_id', $routeId))
+            ->when($filters['from_date'], fn ($query, $fromDate) => $query->whereDate('trip_date', '>=', $fromDate))
+            ->when($filters['to_date'], fn ($query, $toDate) => $query->whereDate('trip_date', '<=', $toDate))
             ->latest();
     }
 
@@ -394,6 +448,12 @@ class TripDetailController extends Controller
     {
         return [
             'search' => trim((string) $request->input('search', '')),
+            'status' => $request->input('status'),
+            'district_id' => $request->integer('district_id') ?: null,
+            'transporter_id' => $request->integer('transporter_id') ?: null,
+            'route_id' => $request->integer('route_id') ?: null,
+            'from_date' => $request->input('from_date'),
+            'to_date' => $request->input('to_date'),
         ];
     }
 

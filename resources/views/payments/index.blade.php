@@ -338,9 +338,8 @@
                             <div class="payment-table-search">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                                    <input class="form-control" id="paymentRecordSearch" type="text" placeholder="Search by trip date, transporter, vehicle, route, trips, fare, or total" autocomplete="off">
+                                    <input class="form-control" id="paymentRecordSearch" name="search" form="paymentFilters" type="text" value="{{ $filters['search'] }}" placeholder="Search by trip date, transporter, CNIC, vehicle, route, trips, fare, or total" autocomplete="off">
                                 </div>
-                                
                             </div>
                         </div>
                         @if ($canManagePayments)
@@ -380,17 +379,7 @@
                             </thead>
                             <tbody>
                                 @forelse ($payments as $payment)
-                                    <tr
-                                        data-payment-search="{{ strtolower(implode(' ', array_filter([
-                                            $payment->trip?->trip_date?->format('Y-m-d'),
-                                            $payment->transporter?->name,
-                                            $payment->vehicle?->registration_no,
-                                            $payment->route?->route_name,
-                                            (string) $payment->no_of_trips,
-                                            number_format((float) $payment->fare_amount, 2, '.', ''),
-                                            number_format((float) $payment->total_amount, 2, '.', ''),
-                                        ]))) }}"
-                                    >
+                                    <tr>
                                         @if ($canManagePayments)
                                             <td class="text-center">
                                                 @if ($payment->status === 'due')
@@ -527,7 +516,7 @@
             var holdActionBaseUrl = @json(url('/payments/__PAYMENT__/hold'));
             var rejectActionBaseUrl = @json(url('/payments/__PAYMENT__/reject'));
             var paymentSearchField = root.querySelector('#paymentRecordSearch');
-            var paymentRows = Array.from(root.querySelectorAll('table.table-app tbody tr[data-payment-search]'));
+            var filterForm = document.getElementById('paymentFilters');
 
             if (window.bootstrap && window.bootstrap.Tooltip) {
                 tooltipElements.forEach(function (element) {
@@ -535,15 +524,19 @@
                 });
             }
 
-            if (paymentSearchField && paymentSearchField.dataset.bound !== 'true') {
+            if (paymentSearchField && filterForm && paymentSearchField.dataset.bound !== 'true') {
                 paymentSearchField.dataset.bound = 'true';
-                paymentSearchField.addEventListener('keyup', function () {
-                    var query = paymentSearchField.value.trim().toLowerCase().replace(/\s+/g, ' ');
-
-                    paymentRows.forEach(function (row) {
-                        var searchContent = (row.getAttribute('data-payment-search') || '').toLowerCase().replace(/\s+/g, ' ');
-                        row.classList.toggle('d-none', query !== '' && searchContent.indexOf(query) === -1);
-                    });
+                paymentSearchField.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        filterForm.requestSubmit();
+                    }
+                });
+                paymentSearchField.addEventListener('input', function () {
+                    clearTimeout(window.appPaymentsSearchDebounce);
+                    window.appPaymentsSearchDebounce = window.setTimeout(function () {
+                        filterForm.requestSubmit();
+                    }, 350);
                 });
             }
 

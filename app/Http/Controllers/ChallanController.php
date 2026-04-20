@@ -36,7 +36,8 @@ class ChallanController extends Controller
         $perPage = $this->resolvePerPage($request);
         $challanQuery = Challan::query()
             ->with(['route', 'district'])
-            ->latest();
+            ->orderByDesc('challan_date')
+            ->orderByDesc('created_at');
 
         return view('challans.index', [
             ...$this->sharedData(),
