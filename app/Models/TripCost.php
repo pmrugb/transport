@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -62,5 +63,13 @@ class TripCost extends Model
     public function transporter(): BelongsTo
     {
         return $this->belongsTo(Operator::class, 'transporter_id');
+    }
+
+    public function scopeForNatco(Builder $query, ?int $departmentId = null): Builder
+    {
+        return $query->whereHas(
+            'trip',
+            fn (Builder $tripQuery) => $tripQuery->forNatco($departmentId)
+        );
     }
 }

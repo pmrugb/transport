@@ -20,6 +20,8 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PreservesUniqueFieldsOnSoftDelete, SoftDeletes;
 
+    public const NATCO_EMAIL = 'natco@pmrugb.gov.pk';
+
     /**
      * Get the attributes that should be cast.
      *
@@ -54,7 +56,7 @@ class User extends Authenticatable
 
     public function isNatcoDepartmentUser(): bool
     {
-        return strtolower((string) $this->email) === 'natco@pmrugb.gov.pk';
+        return strtolower((string) $this->email) === self::NATCO_EMAIL;
     }
 
     public function departmentalNavLabel(): ?string

@@ -115,6 +115,7 @@ class ReportController extends Controller
     {
         $filters = $this->filterValues($request);
         $user = $request->user();
+        $natcoDepartmentId = $user?->isNatcoDepartmentUser() ? Department::natcoId() : null;
 
         return TripCost::query()
             ->select([
@@ -142,9 +143,7 @@ class ReportController extends Controller
                 'transporter:id,name,owner_type,cnic,phone,address,district_id',
                 'transporter.district:id,name',
             ])
-            ->when($user?->isNatcoDepartmentUser(), function ($query) {
-                $query->whereHas('trip.department', fn ($departmentQuery) => $departmentQuery->whereRaw('LOWER(name) = ?', ['natco']));
-            })
+            ->when($user?->isNatcoDepartmentUser(), fn ($query) => $query->forNatco($natcoDepartmentId))
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $search = $filters['search'];
 

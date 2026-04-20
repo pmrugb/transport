@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -12,7 +13,9 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('ALTER TABLE vehicles MODIFY chassis_no VARCHAR(100) NULL');
+        Schema::table('vehicles', function (Blueprint $table): void {
+            $table->string('chassis_no', 100)->nullable()->change();
+        });
     }
 
     public function down(): void
@@ -22,6 +25,9 @@ return new class extends Migration
         }
 
         DB::statement("UPDATE vehicles SET chassis_no = '' WHERE chassis_no IS NULL");
-        DB::statement('ALTER TABLE vehicles MODIFY chassis_no VARCHAR(100) NOT NULL');
+
+        Schema::table('vehicles', function (Blueprint $table): void {
+            $table->string('chassis_no', 100)->nullable(false)->change();
+        });
     }
 };

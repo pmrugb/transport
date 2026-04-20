@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsExcelExports;
 use App\Http\Requests\StoreTripDetailRequest;
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Fare;
 use App\Models\Operator;
@@ -185,6 +186,7 @@ class TripDetailController extends Controller
     public function store(StoreTripDetailRequest $request): RedirectResponse
     {
         $payload = $request->validated();
+        $payload['department_id'] = $this->resolveDepartmentId($request, $payload);
         ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
         $payload['fare_amount'] = $fareAmount;
         $payload['total_amount'] = $totalAmount;
@@ -217,6 +219,7 @@ class TripDetailController extends Controller
         $this->ensureSuperadmin();
 
         $payload = $request->validated();
+        $payload['department_id'] = $this->resolveDepartmentId($request, $payload, $trip);
         ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
         $payload['fare_amount'] = $fareAmount;
         $payload['total_amount'] = $totalAmount;
@@ -278,6 +281,15 @@ class TripDetailController extends Controller
             'fare_amount' => $fareAmount,
             'total_amount' => $totalAmount,
         ];
+    }
+
+    private function resolveDepartmentId(Request $request, array $payload, ?TripDetail $trip = null): ?int
+    {
+        if ($request->user()?->isNatcoDepartmentUser()) {
+            return Department::natcoId();
+        }
+
+        return $payload['department_id'] ?? $trip?->department_id;
     }
 
     private function sharedData(): array

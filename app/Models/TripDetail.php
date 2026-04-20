@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Department;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -92,5 +93,21 @@ class TripDetail extends Model
     public function tripCost(): HasOne
     {
         return $this->hasOne(TripCost::class, 'trip_id');
+    }
+
+    public function scopeForNatco(Builder $query, ?int $departmentId = null): Builder
+    {
+        $natcoDepartmentId = $departmentId ?? Department::natcoId();
+
+        return $query->where(function (Builder $natcoQuery) use ($natcoDepartmentId): void {
+            if ($natcoDepartmentId) {
+                $natcoQuery->where('department_id', $natcoDepartmentId);
+            }
+
+            $natcoQuery->orWhereHas(
+                'creator',
+                fn (Builder $creatorQuery) => $creatorQuery->whereRaw('LOWER(email) = ?', [User::NATCO_EMAIL])
+            );
+        });
     }
 }

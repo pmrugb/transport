@@ -6,6 +6,7 @@ use App\Models\Concerns\PreservesUniqueFieldsOnSoftDelete;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'name',
@@ -19,6 +20,15 @@ class Department extends Model
         'active' => 'Active',
         'inactive' => 'Inactive',
     ];
+
+    public static function natcoId(): ?int
+    {
+        return Cache::remember('departments:natco-id', now()->addMinutes(10), function (): ?int {
+            return static::query()
+                ->whereRaw('LOWER(name) = ?', ['natco'])
+                ->value('id');
+        });
+    }
 
     protected function getSoftDeleteUniqueFields(): array
     {

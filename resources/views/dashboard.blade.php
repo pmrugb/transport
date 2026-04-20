@@ -73,7 +73,7 @@
             <h1 class="page-title">{{ $isNatcoDashboard ? 'NATCO Overview' : 'Overview' }}</h1>
             <p class="page-subtitle">
                 {{ $isNatcoDashboard
-                    ? 'Track departmental trips, payment flow, and route activity from one focused workspace.'
+                    ? 'Track all transporter payments, settlement totals, and payment activity from one focused workspace.'
                     : 'View a summary of key information and recent records.' }}
             </p>
         </div>
@@ -81,10 +81,10 @@
 
     <section class="row g-4 stats-overlap">
         @if ($isNatcoDashboard)
-            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Total Payments</p><h2 class="stat-value">{{ $stats['totalPayments'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-file-invoice-dollar app-icon"></i></span></div><p class="stat-note">All NATCO-linked payment records currently available in the system.</p></div></div></div>
-            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Due Payments</p><h2 class="stat-value">{{ $stats['duePayments'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-hourglass-half app-icon"></i></span></div><p class="stat-note">Payments still waiting for settlement or review.</p></div></div></div>
-            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Paid Payments</p><h2 class="stat-value">{{ $stats['paidPayments'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-circle-check app-icon"></i></span></div><p class="stat-note">Payments already completed for NATCO activity.</p></div></div></div>
-            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Today</p><h2 class="stat-value">{{ $stats['todayPayments'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-calendar-day app-icon"></i></span></div><p class="stat-note">Payments created or calculated today.</p></div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Total Payments</p><h2 class="stat-value">{{ $stats['totalPayments'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-file-invoice-dollar app-icon"></i></span></div><p class="stat-note">All trip cost payment records available in the system.</p></div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Due Payments</p><h2 class="stat-value">{{ $stats['duePayments'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-hourglass-half app-icon"></i></span></div><p class="stat-note">Payments waiting for approval or settlement.</p></div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Paid Amount</p><h2 class="stat-value stat-value-compact">{{ number_format((float) $stats['paidAmount'], 0) }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-money-check-dollar app-icon"></i></span></div><p class="stat-note">Amount already paid to transporters.</p></div></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Amount Left</p><h2 class="stat-value stat-value-compact">{{ number_format((float) $stats['amountLeft'], 0) }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-wallet app-icon"></i></span></div><p class="stat-note">Amount still pending in due payments.</p></div></div></div>
         @else
             <div class="col-sm-6 col-xl-4"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Total Operators</p><h2 class="stat-value">{{ $stats['totalOperators'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-users app-icon"></i></span></div><p class="stat-note">All transporters currently registered in the system.</p></div></div></div>
             <div class="col-sm-6 col-xl-4"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Total Routes</p><h2 class="stat-value">{{ $stats['totalRoutes'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-route app-icon"></i></span></div><p class="stat-note">Active route records available for operations.</p></div></div></div>
@@ -93,121 +93,101 @@
     </section>
 
     @if ($isNatcoDashboard)
-        <section class="row g-4 mt-2 mb-4">
-            <div class="col-lg-8">
-                <div class="card section-card h-100">
-                    <div class="card-header">
-                        <h3 class="section-title">Payment Overview</h3>
+        <section class="card section-card mt-2 mb-4">
+            <div class="card-header">
+                <h3 class="section-title">Payment Overview</h3>
+                <p class="section-copy">Complete payment position across due, paid, hold, rejected, and today&apos;s activity.</p>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4 col-sm-6">
+                        <div class="info-tile h-100">
+                            <p class="mini-note mb-2">Due Amount</p>
+                            <p class="fw-semibold mb-1">{{ number_format((float) $stats['dueAmount'], 2) }}</p>
+                            <p class="text-muted small mb-0">Outstanding payment value still pending settlement.</p>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-sm-6">
-                                <div class="info-tile h-100">
-                                    <p class="mini-note mb-2">Due Amount</p>
-                                    <p class="fw-semibold mb-1">{{ number_format((float) $stats['dueAmount'], 2) }}</p>
-                                    <p class="text-muted small mb-0">Outstanding payment value still pending settlement.</p>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="info-tile h-100">
-                                    <p class="mini-note mb-2">Paid Amount</p>
-                                    <p class="fw-semibold mb-1">{{ number_format((float) $stats['paidAmount'], 2) }}</p>
-                                    <p class="text-muted small mb-0">Completed payout value already settled.</p>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="info-tile h-100">
-                                    <p class="mini-note mb-2">On Hold</p>
-                                    <p class="fw-semibold mb-1">{{ $stats['onHoldPayments'] }}</p>
-                                    <p class="text-muted small mb-0">Payments temporarily paused for review or clarification.</p>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="info-tile h-100">
-                                    <p class="mini-note mb-2">Rejected</p>
-                                    <p class="fw-semibold mb-1">{{ $stats['rejectedPayments'] }}</p>
-                                    <p class="text-muted small mb-0">Records that were reviewed and not approved for settlement.</p>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="info-tile h-100">
-                                    <p class="mini-note mb-2">Highest Payment Route</p>
-                                    <p class="fw-semibold mb-1">{{ $stats['topRouteName'] }}</p>
-                                    <p class="text-muted small mb-0">
-                                        {{ number_format((float) $stats['topRouteAmount'], 2) }} across {{ $stats['topRoutePayments'] }} {{ $stats['topRoutePayments'] === 1 ? 'payment' : 'payments' }}.
-                                    </p>
-                                </div>
-                            </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="info-tile h-100">
+                            <p class="mini-note mb-2">Paid Payments</p>
+                            <p class="fw-semibold mb-1">{{ $stats['paidPayments'] }}</p>
+                            <p class="text-muted small mb-0">Payments already completed for transporters.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="info-tile h-100">
+                            <p class="mini-note mb-2">On Hold</p>
+                            <p class="fw-semibold mb-1">{{ $stats['onHoldPayments'] }}</p>
+                            <p class="text-muted small mb-0">Payments temporarily paused for review or clarification.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="info-tile h-100">
+                            <p class="mini-note mb-2">Rejected</p>
+                            <p class="fw-semibold mb-1">{{ $stats['rejectedPayments'] }}</p>
+                            <p class="text-muted small mb-0">Records reviewed and not approved for settlement.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="info-tile h-100">
+                            <p class="mini-note mb-2">Today's Payment Count</p>
+                            <p class="fw-semibold mb-1">{{ $stats['todayPayments'] }}</p>
+                            <p class="text-muted small mb-0">Payments created or calculated today.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="info-tile h-100">
+                            <p class="mini-note mb-2">Today's Payment Amount</p>
+                            <p class="fw-semibold mb-1">{{ number_format((float) $stats['todayAmount'], 2) }}</p>
+                            <p class="text-muted small mb-0">Total value from today&apos;s payment activity.</p>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="card section-card h-100">
-                    <div class="card-header">
-                        <h3 class="section-title">Today</h3>
-                    </div>
-                    <div class="card-body d-flex flex-column gap-3">
-                        <div class="info-tile">
-                            <p class="mini-note mb-2">Today's Payment Count</p>
-                            <p class="fw-semibold mb-0">{{ $stats['todayPayments'] }}</p>
-                        </div>
-                        <div class="info-tile">
-                            <p class="mini-note mb-2">Today's Payment Amount</p>
-                            <p class="fw-semibold mb-0">{{ number_format((float) $stats['todayAmount'], 2) }}</p>
-                        </div>
-                        <div class="info-tile">
-                            <p class="mini-note mb-2">Trips Linked to NATCO</p>
-                            <p class="fw-semibold mb-0">{{ $stats['totalTrips'] }}</p>
-                        </div>
-                        <div class="d-flex flex-wrap gap-2 pt-1">
-                            <a class="btn btn-outline-secondary" href="{{ route('payments.due') }}">Due Payments</a>
-                            <a class="btn btn-success" href="{{ route('payments.index') }}">Open Payments</a>
-                        </div>
-                    </div>
+                <div class="d-flex flex-wrap gap-2 pt-3">
+                    <a class="btn btn-outline-secondary" href="{{ route('payments.due') }}">Due Payments</a>
+                    <a class="btn btn-outline-secondary" href="{{ route('payments.paid') }}">Paid Payments</a>
+                    <a class="btn btn-success" href="{{ route('payments.index') }}">Open Payments</a>
                 </div>
             </div>
         </section>
 
-        <section class="card section-card table-card mb-4">
+        <section class="card section-card mb-4">
             <div class="card-header">
-                <div class="table-toolbar">
-                    <div>
-                        <h3 class="section-title">Routes by Payment Value</h3>
-                        <p class="section-copy">See which routes currently carry the highest payment totals.</p>
-                    </div>
-                </div>
+                <h3 class="section-title">Routes</h3>
+                <p class="section-copy">Review route-wise paid and unpaid payment totals across the dashboard.</p>
             </div>
-            <div class="card-body border-bottom">
-                <div class="table-shell table-wrap">
-                    <table class="table table-app align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Route</th>
-                                <th>District</th>
-                                <th>Payments</th>
-                                <th>Due Amount</th>
-                                <th>Paid Amount</th>
-                                <th>Total Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($routePaymentSummary as $routeSummary)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $routeSummary->route_name }}</td>
-                                    <td>{{ $routeSummary->district_name }}</td>
-                                    <td>{{ $routeSummary->payment_count }}</td>
-                                    <td>{{ number_format((float) $routeSummary->due_amount, 2) }}</td>
-                                    <td>{{ number_format((float) $routeSummary->paid_amount, 2) }}</td>
-                                    <td class="fw-semibold">{{ number_format((float) $routeSummary->total_amount, 2) }}</td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="7" class="text-center text-muted py-4">No route payment totals found yet.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+            <div class="card-body">
+                <div class="dashboard-route-grid">
+                    @forelse ($routePaymentSummary as $route)
+                        <div class="dashboard-route-tile">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <p class="dashboard-route-title">{{ $route->route_name }}</p>
+                                <span class="dashboard-badge-soft">{{ $route->district?->name ?: 'District' }}</span>
+                            </div>
+                            <p class="dashboard-route-copy">{{ $route->starting_point }} to {{ $route->ending_point }}</p>
+                            <div class="dashboard-route-meta mb-3">
+                                <span class="dashboard-route-meta-item"><i class="fa-solid fa-clock app-icon"></i> {{ $route->timing ?: 'N/A' }}</span>
+                                <span class="dashboard-route-meta-item"><i class="fa-solid fa-ruler-horizontal app-icon"></i> {{ $route->total_distance }} km</span>
+                                <span class="dashboard-route-meta-item"><i class="fa-solid fa-file-invoice-dollar app-icon"></i> {{ $route->payment_count }} {{ (int) $route->payment_count === 1 ? 'payment' : 'payments' }}</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-sm-6">
+                                    <div class="info-tile h-100">
+                                        <p class="mini-note mb-2">Paid</p>
+                                        <p class="fw-semibold mb-0">{{ number_format((float) $route->paid_amount, 2) }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="info-tile h-100">
+                                        <p class="mini-note mb-2">Unpaid</p>
+                                        <p class="fw-semibold mb-0">{{ number_format((float) $route->unpaid_amount, 2) }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0">No routes found yet.</p>
+                    @endforelse
                 </div>
             </div>
         </section>
