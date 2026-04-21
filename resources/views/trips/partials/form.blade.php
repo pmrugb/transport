@@ -748,7 +748,11 @@
                 });
             };
 
-            const syncFromVehicle = function () {
+            const syncFromVehicle = function (options) {
+                const settings = Object.assign({
+                    overwriteDriverFields: true,
+                }, options || {});
+
                 if (!vehicleField.value || !vehicleDetailsUrl) {
                     return;
                 }
@@ -770,15 +774,15 @@
                         baseFareAmount = Number(data.fare_amount);
                     }
 
-                    if (driverNameField) {
+                    if (settings.overwriteDriverFields && driverNameField) {
                         driverNameField.value = data.driver_name || '';
                     }
 
-                    if (cnicField) {
+                    if (settings.overwriteDriverFields && cnicField) {
                         cnicField.value = formatCnic(data.driver_cnic || '');
                     }
 
-                    if (mobileField) {
+                    if (settings.overwriteDriverFields && mobileField) {
                         mobileField.value = formatMobile(data.driver_mobile || '');
                     }
 
@@ -1036,7 +1040,9 @@
             });
 
             if (vehicleField.value) {
-                syncFromVehicle();
+                syncFromVehicle({
+                    overwriteDriverFields: isCreateForm,
+                });
             } else if (routeField.value) {
                 syncFromRoute();
             }
