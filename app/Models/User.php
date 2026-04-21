@@ -22,6 +22,14 @@ class User extends Authenticatable
 
     public const NATCO_EMAIL = 'natco@pmrugb.gov.pk';
     public const NATCO_ADMIN_EMAIL = 'natcoadmin@pmrugb.gov.pk';
+    public const NATCO_ADMIN_EMAIL_ALIASES = [
+        self::NATCO_ADMIN_EMAIL,
+        'jalal@pmrugb.gov.pk',
+    ];
+    public const NATCO_DEPARTMENT_EMAIL_ALIASES = [
+        self::NATCO_EMAIL,
+        ...self::NATCO_ADMIN_EMAIL_ALIASES,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -57,15 +65,12 @@ class User extends Authenticatable
 
     public function isNatcoDepartmentUser(): bool
     {
-        return in_array(strtolower((string) $this->email), [
-            self::NATCO_EMAIL,
-            self::NATCO_ADMIN_EMAIL,
-        ], true);
+        return in_array(strtolower((string) $this->email), self::NATCO_DEPARTMENT_EMAIL_ALIASES, true);
     }
 
     public function isNatcoAdminUser(): bool
     {
-        return strtolower((string) $this->email) === self::NATCO_ADMIN_EMAIL;
+        return in_array(strtolower((string) $this->email), self::NATCO_ADMIN_EMAIL_ALIASES, true);
     }
 
     public function canViewTripsModule(): bool
