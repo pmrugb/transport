@@ -148,7 +148,7 @@
 
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="driver_name">Driver Name <span class="text-danger">*</span></label>
-            <input class="form-control @error('driver_name') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="driver_name" name="driver_name" type="text" placeholder="Enter driver name" value="{{ old('driver_name', $trip->driver_name) }}" @readonly($isCreateForm) required>
+            <input class="form-control @error('driver_name') is-invalid @enderror" id="driver_name" name="driver_name" type="text" placeholder="Enter driver name" value="{{ old('driver_name', $trip->driver_name) }}" required>
             @error('driver_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
@@ -629,14 +629,14 @@
 
                 fareAmountField.readOnly = isCreateForm;
                 totalAmountField.readOnly = isCreateForm;
-                driverNameField.readOnly = isCreateForm;
+                driverNameField.readOnly = false;
                 cnicField.readOnly = isCreateForm;
                 mobileField.readOnly = isCreateForm;
                 noOfTripsField.readOnly = false;
                 noOfTripsField.disabled = false;
                 noOfTripsField.classList.remove('bg-light');
 
-                [driverNameField, cnicField, mobileField, fareAmountField, totalAmountField].forEach(function (field) {
+                [cnicField, mobileField, fareAmountField, totalAmountField].forEach(function (field) {
                     field.classList.toggle('bg-light', isCreateForm);
                 });
 
