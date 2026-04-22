@@ -15,6 +15,13 @@
             @if ($canEditTrips)
                 <a class="btn btn-warning" href="{{ route('trips.edit', $trip) }}">Edit Trip</a>
             @endif
+            @if ($canDeleteTrips)
+                <form action="{{ route('trips.destroy', $trip) }}" method="POST" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete this trip record?">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">Delete Trip</button>
+                </form>
+            @endif
         </div>
     </div>
 

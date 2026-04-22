@@ -123,6 +123,7 @@
                             <input type="hidden" name="district_id" value="{{ $filters['district_id'] }}">
                             <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
                             <input type="hidden" name="route_id" value="{{ $filters['route_id'] }}">
+                            <input type="hidden" name="created_by" value="{{ $filters['created_by'] }}">
                             <input type="hidden" name="from_date" value="{{ $filters['from_date'] }}">
                             <input type="hidden" name="to_date" value="{{ $filters['to_date'] }}">
                             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
@@ -208,6 +209,17 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                @if (auth()->user()?->isSuperadmin())
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold" for="created_by">Created By</label>
+                                        <select class="form-select" id="created_by" name="created_by">
+                                            <option value="">All users</option>
+                                            @foreach ($users as $user)
+                                                <option value="{{ $user->id }}" @selected((string) $filters['created_by'] === (string) $user->id)>{{ $user->name }}{{ $user->email ? ' - '.$user->email : '' }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                                 <div class="col-md-2">
                                     <label class="form-label fw-semibold" for="from_date">From Date</label>
                                     <input class="form-control" id="from_date" name="from_date" type="date" value="{{ $filters['from_date'] }}">
@@ -232,6 +244,7 @@
                                 <input type="hidden" name="district_id" value="{{ $filters['district_id'] }}">
                                 <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
                                 <input type="hidden" name="route_id" value="{{ $filters['route_id'] }}">
+                                <input type="hidden" name="created_by" value="{{ $filters['created_by'] }}">
                                 <input type="hidden" name="from_date" value="{{ $filters['from_date'] }}">
                                 <input type="hidden" name="to_date" value="{{ $filters['to_date'] }}">
                                 <div class="input-group input-group-sm" style="max-width: 220px;">

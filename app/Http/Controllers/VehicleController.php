@@ -45,11 +45,13 @@ class VehicleController extends Controller
 
         return response()->streamDownload(function () use ($request, $columns): void {
             $handle = fopen('php://output', 'w');
+            $serialNumber = 1;
 
             fputcsv($handle, array_values($columns));
 
             foreach ($this->filteredVehiclesQuery($request)->cursor() as $vehicle) {
-                fputcsv($handle, array_values($this->vehicleExportRow($vehicle, $columns)));
+                fputcsv($handle, array_values($this->vehicleExportRow($vehicle, $columns, $serialNumber)));
+                $serialNumber++;
             }
 
             fclose($handle);
@@ -63,7 +65,8 @@ class VehicleController extends Controller
         $columns = $this->selectedVehicleExportColumns($request);
         $rows = $this->filteredVehiclesQuery($request)
             ->get()
-            ->map(fn (Vehicle $vehicle): array => $this->vehicleExportRow($vehicle, $columns))
+            ->values()
+            ->map(fn (Vehicle $vehicle, int $index): array => $this->vehicleExportRow($vehicle, $columns, $index + 1))
             ->all();
         $filename = 'vehicles-'.now()->format('Ymd-His').'.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), 'vehicles-xlsx-');
@@ -82,7 +85,8 @@ class VehicleController extends Controller
         $columns = $this->selectedVehicleExportColumns($request);
         $rows = $this->filteredVehiclesQuery($request)
             ->get()
-            ->map(fn (Vehicle $vehicle): array => $this->vehicleExportRow($vehicle, $columns))
+            ->values()
+            ->map(fn (Vehicle $vehicle, int $index): array => $this->vehicleExportRow($vehicle, $columns, $index + 1))
             ->all();
 
         return view('exports.table-pdf', [
@@ -225,6 +229,7 @@ class VehicleController extends Controller
     private function vehicleExportColumns(): array
     {
         return [
+            'sr_no' => 'Sr #',
             'transporter' => 'Transporter',
             'vehicle_type' => 'Vehicle Type',
             'registration_no' => 'Registration No',
@@ -246,9 +251,10 @@ class VehicleController extends Controller
         return $selected !== [] ? $selected : $available;
     }
 
-    private function vehicleExportRow(Vehicle $vehicle, array $columns): array
+    private function vehicleExportRow(Vehicle $vehicle, array $columns, int $serialNumber = 1): array
     {
         $row = [
+            'sr_no' => $serialNumber,
             'transporter' => $vehicle->transporter?->name ?: '',
             'vehicle_type' => $vehicle->vehicleType?->name ?: '',
             'registration_no' => $vehicle->registration_no ?: '',

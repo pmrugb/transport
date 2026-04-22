@@ -25,6 +25,7 @@ class User extends Authenticatable
     public const NATCO_ADMIN_EMAIL_ALIASES = [
         self::NATCO_ADMIN_EMAIL,
         'jalal@pmrugb.gov.pk',
+        'ehsan@pmrugb.gov.pk',
     ];
     public const NATCO_DEPARTMENT_EMAIL_ALIASES = [
         self::NATCO_EMAIL,
@@ -61,6 +62,16 @@ class User extends Authenticatable
     public function canManagePayments(): bool
     {
         return $this->isSuperadmin() || $this->isNatcoDepartmentUser();
+    }
+
+    public function canAccessPaymentsModule(): bool
+    {
+        return ! $this->isNatcoAdminUser();
+    }
+
+    public function canSeePaymentsNav(): bool
+    {
+        return $this->canAccessPaymentsModule();
     }
 
     public function isNatcoDepartmentUser(): bool

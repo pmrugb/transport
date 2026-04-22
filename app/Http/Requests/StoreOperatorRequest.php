@@ -6,7 +6,7 @@ use App\Models\Operator;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Unique;
+use Illuminate\Validation\Validator;
 
 class StoreOperatorRequest extends FormRequest
 {
@@ -32,7 +32,6 @@ class StoreOperatorRequest extends FormRequest
             'string',
             'size:15',
             'regex:/^\d{5}-\d{7}-\d{1}$/',
-            Rule::unique('transporters', 'cnic')->ignore($operatorId),
         ];
 
         if ($this->input('owner_type') === 'private') {
@@ -100,5 +99,31 @@ class StoreOperatorRequest extends FormRequest
                 ])),
             ]);
         }
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $cnic = $this->input('cnic');
+
+            if (! is_string($cnic) || $cnic === '') {
+                return;
+            }
+
+            $existingOperator = Operator::query()
+                ->select(['id', 'name'])
+                ->where('cnic', $cnic)
+                ->when($this->route('operator')?->id, fn ($query, $operatorId) => $query->whereKeyNot($operatorId))
+                ->first();
+
+            if (! $existingOperator) {
+                return;
+            }
+
+            $validator->errors()->add(
+                'cnic',
+                "This CNIC already exists for transporter {$existingOperator->name}."
+            );
+        });
     }
 }

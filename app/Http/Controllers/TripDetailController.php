@@ -11,11 +11,13 @@ use App\Models\Operator;
 use App\Models\TransportRoute;
 use App\Models\TripCost;
 use App\Models\TripDetail;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -196,6 +198,7 @@ class TripDetailController extends Controller
             'trip' => $trip,
             'statuses' => TripDetail::STATUSES,
             'canEditTrips' => auth()->user()?->canEditTrips() ?? false,
+            'canDeleteTrips' => auth()->user()?->canDeleteTrips() ?? false,
         ]);
     }
 
@@ -215,8 +218,19 @@ class TripDetailController extends Controller
             $this->syncTripCost($trip, $payload);
         });
 
-        return redirect()->route('trips.create')
+        $duplicateTripMessage = $this->duplicateTripToastMessage(
+            (int) $payload['vehicle_id'],
+            (string) $payload['trip_date']
+        );
+
+        $redirect = redirect()->route('trips.create')
             ->with('success', 'Trip saved successfully.');
+
+        if ($duplicateTripMessage !== null) {
+            $redirect->with('warning', $duplicateTripMessage);
+        }
+
+        return $redirect;
     }
 
     public function edit(TripDetail $trip): View
@@ -344,6 +358,9 @@ class TripDetailController extends Controller
             'routes' => $routes,
             'vehicles' => $vehicles,
             'transporters' => Operator::query()->select(['id', 'name', 'cnic', 'owner_type'])->orderBy('name')->get(),
+            'users' => auth()->user()?->isSuperadmin()
+                ? User::query()->select(['id', 'name', 'email'])->orderBy('name')->get()
+                : collect(),
             'ownerTypes' => Operator::OWNER_TYPES,
             'vehicleTypes' => VehicleType::query()->select(['id', 'name'])->orderBy('name')->get(),
             'vehicleStatuses' => Vehicle::STATUSES,
@@ -402,6 +419,7 @@ class TripDetailController extends Controller
                 'vehicle:id,registration_no',
                 'transporter:id,name',
                 'district:id,name',
+                'creator:id,name',
                 'tripCost:id,trip_id',
             ])
             ->when($filters['search'] !== '', function ($query) use ($filters) {
@@ -439,6 +457,7 @@ class TripDetailController extends Controller
             ->when($filters['district_id'], fn ($query, $districtId) => $query->where('district_id', $districtId))
             ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
             ->when($filters['route_id'], fn ($query, $routeId) => $query->where('route_id', $routeId))
+            ->when($filters['created_by'], fn ($query, $createdBy) => $query->where('created_by', $createdBy))
             ->when($filters['from_date'], fn ($query, $fromDate) => $query->whereDate('trip_date', '>=', $fromDate))
             ->when($filters['to_date'], fn ($query, $toDate) => $query->whereDate('trip_date', '<=', $toDate))
             ->latest();
@@ -452,9 +471,32 @@ class TripDetailController extends Controller
             'district_id' => $request->integer('district_id') ?: null,
             'transporter_id' => $request->integer('transporter_id') ?: null,
             'route_id' => $request->integer('route_id') ?: null,
+            'created_by' => $request->user()?->isSuperadmin() ? ($request->integer('created_by') ?: null) : null,
             'from_date' => $request->input('from_date'),
             'to_date' => $request->input('to_date'),
         ];
+    }
+
+    private function duplicateTripToastMessage(int $vehicleId, string $tripDate): ?string
+    {
+        $normalizedTripDate = Carbon::parse($tripDate)->toDateString();
+
+        if ($normalizedTripDate !== today()->toDateString()) {
+            return null;
+        }
+
+        $todaysVehicleTripsCount = TripDetail::query()
+            ->where('vehicle_id', $vehicleId)
+            ->whereDate('trip_date', $normalizedTripDate)
+            ->count();
+
+        if ($todaysVehicleTripsCount < 2) {
+            return null;
+        }
+
+        return $todaysVehicleTripsCount === 2
+            ? "You have added a second entry for today's date with the same vehicle registration."
+            : "You have added another entry for today's date with the same vehicle registration.";
     }
 
     private function tripExportColumns(): array
@@ -470,16 +512,18 @@ class TripDetailController extends Controller
             'fare_amount' => 'Fare Amount',
             'total_amount' => 'Total Amount',
             'status' => 'Status',
+            'created_by' => 'Created By',
         ];
     }
 
     private function selectedTripExportColumns(Request $request): array
     {
         $available = $this->tripExportColumns();
-        $requested = array_values(array_filter((array) $request->input('columns', array_keys($available)), 'is_string'));
+        $defaultSelection = array_diff_key($available, ['created_by' => true]);
+        $requested = array_values(array_filter((array) $request->input('columns', array_keys($defaultSelection)), 'is_string'));
         $selected = array_intersect_key($available, array_flip($requested));
 
-        return $selected !== [] ? $selected : $available;
+        return $selected !== [] ? $selected : $defaultSelection;
     }
 
     private function tripExportRow(TripDetail $trip, array $columns): array
@@ -495,6 +539,7 @@ class TripDetailController extends Controller
             'fare_amount' => (float) $trip->fare_amount,
             'total_amount' => (float) $trip->total_amount,
             'status' => TripDetail::STATUSES[$trip->status] ?? ucfirst((string) $trip->status),
+            'created_by' => $trip->creator?->name ?: '',
         ];
 
         $exportRow = [];

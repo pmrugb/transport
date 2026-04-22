@@ -43,11 +43,13 @@ class OperatorController extends Controller
 
         return response()->streamDownload(function () use ($request, $columns): void {
             $handle = fopen('php://output', 'w');
+            $serialNumber = 1;
 
             fputcsv($handle, array_values($columns));
 
             foreach ($this->filteredOperatorsQuery($request)->cursor() as $operator) {
-                fputcsv($handle, array_values($this->operatorExportRow($operator, $columns)));
+                fputcsv($handle, array_values($this->operatorExportRow($operator, $columns, $serialNumber)));
+                $serialNumber++;
             }
 
             fclose($handle);
@@ -61,7 +63,8 @@ class OperatorController extends Controller
         $columns = $this->selectedOperatorExportColumns($request);
         $rows = $this->filteredOperatorsQuery($request)
             ->get()
-            ->map(fn (Operator $operator): array => $this->operatorExportRow($operator, $columns))
+            ->values()
+            ->map(fn (Operator $operator, int $index): array => $this->operatorExportRow($operator, $columns, $index + 1))
             ->all();
         $filename = 'transporters-'.now()->format('Ymd-His').'.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), 'transporters-xlsx-');
@@ -80,7 +83,8 @@ class OperatorController extends Controller
         $columns = $this->selectedOperatorExportColumns($request);
         $rows = $this->filteredOperatorsQuery($request)
             ->get()
-            ->map(fn (Operator $operator): array => $this->operatorExportRow($operator, $columns))
+            ->values()
+            ->map(fn (Operator $operator, int $index): array => $this->operatorExportRow($operator, $columns, $index + 1))
             ->all();
 
         return view('exports.table-pdf', [
@@ -231,14 +235,21 @@ class OperatorController extends Controller
             ->with(['district:id,name'])
             ->when($filters['search'] !== '', function ($query) use ($filters) {
                 $search = $filters['search'];
+                $normalizedSearch = preg_replace('/\D+/', '', $search);
 
-                $query->where(function ($nestedQuery) use ($search) {
+                $query->where(function ($nestedQuery) use ($search, $normalizedSearch) {
                     $nestedQuery
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('cnic', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
                         ->orWhere('address', 'like', "%{$search}%")
                         ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
+
+                    if ($normalizedSearch !== '') {
+                        $nestedQuery
+                            ->orWhereRaw("REPLACE(REPLACE(cnic, '-', ''), ' ', '') like ?", ["%{$normalizedSearch}%"])
+                            ->orWhereRaw("REPLACE(REPLACE(phone, '-', ''), ' ', '') like ?", ["%{$normalizedSearch}%"]);
+                    }
                 });
             })
             ->latest();
@@ -254,6 +265,7 @@ class OperatorController extends Controller
     private function operatorExportColumns(): array
     {
         return [
+            'sr_no' => 'Sr #',
             'owner_type' => 'Owner Type',
             'name' => 'Name',
             'cnic' => 'CNIC',
@@ -277,9 +289,10 @@ class OperatorController extends Controller
         return $selected !== [] ? $selected : $available;
     }
 
-    private function operatorExportRow(Operator $operator, array $columns): array
+    private function operatorExportRow(Operator $operator, array $columns, int $serialNumber = 1): array
     {
         $row = [
+            'sr_no' => $serialNumber,
             'owner_type' => Operator::OWNER_TYPES[$operator->owner_type] ?? ucfirst((string) $operator->owner_type),
             'name' => $operator->name ?: '',
             'cnic' => $operator->cnic ?: '',

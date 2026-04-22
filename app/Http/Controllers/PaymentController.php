@@ -21,36 +21,50 @@ class PaymentController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return $this->renderIndex($request, null, 'All Payments', 'Transporter payment records across due, paid, and rejected stages.');
     }
 
     public function due(Request $request): View
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return $this->renderIndex($request, 'due', 'Due Payments', 'Pending transporter payments that are ready for review and approval.');
     }
 
     public function approved(Request $request): RedirectResponse
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return redirect()->route('payments.paid', $request->query());
     }
 
     public function paid(Request $request): View
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return $this->renderIndex($request, 'paid', 'Paid Payments', 'Payments that have already been settled with transporters.');
     }
 
     public function onHold(Request $request): View
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return $this->renderIndex($request, 'on_hold', 'On Hold Payments', 'Payments that are temporarily held pending clarification or further review.');
     }
 
     public function rejected(Request $request): View
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return $this->renderIndex($request, 'rejected', 'Rejected Payments', 'Payments that were reviewed and rejected.');
     }
 
     public function show(TripCost $payment): View
     {
+        $this->ensureCanAccessPaymentsModule();
+
         return view('payments.show', [
             ...$this->sharedData(),
             'payment' => $payment->load(['trip.district', 'trip.creator', 'route.district', 'vehicle', 'transporter']),
@@ -88,6 +102,8 @@ class PaymentController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
+        $this->ensureCanAccessPaymentsModule();
+
         $filename = 'payments-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($request): void {
@@ -110,6 +126,8 @@ class PaymentController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
+        $this->ensureCanAccessPaymentsModule();
+
         $payments = $this->filteredPaymentsQuery($request)->get();
         $filename = 'payments-'.now()->format('Ymd-His').'.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), 'payments-xlsx-');
@@ -127,6 +145,8 @@ class PaymentController extends Controller
 
     public function pdfView(Request $request): ViewContract
     {
+        $this->ensureCanAccessPaymentsModule();
+
         $payments = $this->filteredPaymentsQuery($request)->get();
         $rows = $payments->values()->map(
             fn (TripCost $payment, int $index): array => $this->paymentExportRow($payment, $index + 1)
@@ -144,6 +164,8 @@ class PaymentController extends Controller
 
     public function pdfTableView(Request $request): ViewContract
     {
+        $this->ensureCanAccessPaymentsModule();
+
         $payments = $this->filteredPaymentsQuery($request)->get();
         $rows = $payments->values()->map(
             fn (TripCost $payment, int $index): array => $this->paymentExportRow($payment, $index + 1)
@@ -302,7 +324,16 @@ class PaymentController extends Controller
 
     private function ensureCanManagePayments(): void
     {
-        abort_unless(auth()->user()?->canManagePayments(), 403);
+        abort_unless(
+            (auth()->user()?->canAccessPaymentsModule() ?? false)
+            && (auth()->user()?->canManagePayments() ?? false),
+            403
+        );
+    }
+
+    private function ensureCanAccessPaymentsModule(): void
+    {
+        abort_unless(auth()->user()?->canAccessPaymentsModule(), 403);
     }
 
     private function filteredPaymentsQuery(Request $request)

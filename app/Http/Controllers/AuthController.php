@@ -44,7 +44,7 @@ class AuthController extends Controller
                 ->onlyInput('login');
         }
 
-        Auth::login($user, false);
+        Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
         SecurityLog::recordEvent('login_success', $request, $user, $user->email);
 

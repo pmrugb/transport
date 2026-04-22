@@ -1534,6 +1534,18 @@ body {
   color: #b42318;
 }
 
+.qas-toast-warning .toast-header {
+  background: rgba(255, 248, 230, 0.98);
+}
+
+.qas-toast-dot-warning {
+  background: #f59e0b;
+}
+
+.qas-toast-warning .toast-header strong {
+  color: #9a6700;
+}
+
 .qas-toast .btn-close {
   opacity: 0.8;
 }

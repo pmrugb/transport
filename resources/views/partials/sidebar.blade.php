@@ -1,6 +1,7 @@
 <aside class="app-sidebar d-none d-lg-block">
     <div class="app-sidebar-shell">
         @php($paymentsOnlySidebar = auth()->user()?->hasPaymentsOnlySidebar() ?? false)
+        @php($canSeePaymentsNav = auth()->user()?->canSeePaymentsNav() ?? false)
         <a class="app-sidebar-brand" href="{{ route('dashboard') }}">
             <span class="app-brand-mark">
                 <i class="fa-solid fa-bus app-icon"></i>
@@ -42,22 +43,24 @@
                     </a>
                 </li>
             @endunless
-            <li class="nav-item nav-item-group {{ request()->routeIs('payments.*') ? 'open' : '' }}">
-                <button class="nav-link nav-link-group-toggle {{ request()->routeIs('payments.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopPaymentsMenu" aria-expanded="{{ request()->routeIs('payments.*') ? 'true' : 'false' }}" aria-controls="desktopPaymentsMenu">
-                    <span class="nav-link-icon"><i class="fa-solid fa-wallet app-icon"></i></span>
-                    <span class="nav-link-text">Payments</span>
-                    <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
-                </button>
-                <div class="collapse {{ request()->routeIs('payments.*') ? 'show' : '' }}" id="desktopPaymentsMenu" data-bs-parent="#desktopSidebarAccordion">
-                        <div class="app-sidebar-submenu">
-                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.due') ? 'active' : '' }}" href="{{ route('payments.due') }}"><i class="fa-solid fa-hourglass-half app-icon"></i> <span class="nav-link-text">Due Payments</span></a>
-                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.paid') ? 'active' : '' }}" href="{{ route('payments.paid') }}"><i class="fa-solid fa-money-check-dollar app-icon"></i> <span class="nav-link-text">Paid</span></a>
-                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.on-hold') ? 'active' : '' }}" href="{{ route('payments.on-hold') }}"><i class="fa-solid fa-pause app-icon"></i> <span class="nav-link-text">On Hold</span></a>
-                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.rejected') ? 'active' : '' }}" href="{{ route('payments.rejected') }}"><i class="fa-solid fa-ban app-icon"></i> <span class="nav-link-text">Rejected</span></a>
-                            <a class="app-sidebar-sublink {{ request()->routeIs('payments.index') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-list app-icon"></i> <span class="nav-link-text">All Payments</span></a>
-                        </div>
-                </div>
-            </li>
+            @if ($canSeePaymentsNav)
+                <li class="nav-item nav-item-group {{ request()->routeIs('payments.*') ? 'open' : '' }}">
+                    <button class="nav-link nav-link-group-toggle {{ request()->routeIs('payments.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopPaymentsMenu" aria-expanded="{{ request()->routeIs('payments.*') ? 'true' : 'false' }}" aria-controls="desktopPaymentsMenu">
+                        <span class="nav-link-icon"><i class="fa-solid fa-wallet app-icon"></i></span>
+                        <span class="nav-link-text">Payments</span>
+                        <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
+                    </button>
+                    <div class="collapse {{ request()->routeIs('payments.*') ? 'show' : '' }}" id="desktopPaymentsMenu" data-bs-parent="#desktopSidebarAccordion">
+                            <div class="app-sidebar-submenu">
+                                <a class="app-sidebar-sublink {{ request()->routeIs('payments.due') ? 'active' : '' }}" href="{{ route('payments.due') }}"><i class="fa-solid fa-hourglass-half app-icon"></i> <span class="nav-link-text">Due Payments</span></a>
+                                <a class="app-sidebar-sublink {{ request()->routeIs('payments.paid') ? 'active' : '' }}" href="{{ route('payments.paid') }}"><i class="fa-solid fa-money-check-dollar app-icon"></i> <span class="nav-link-text">Paid</span></a>
+                                <a class="app-sidebar-sublink {{ request()->routeIs('payments.on-hold') ? 'active' : '' }}" href="{{ route('payments.on-hold') }}"><i class="fa-solid fa-pause app-icon"></i> <span class="nav-link-text">On Hold</span></a>
+                                <a class="app-sidebar-sublink {{ request()->routeIs('payments.rejected') ? 'active' : '' }}" href="{{ route('payments.rejected') }}"><i class="fa-solid fa-ban app-icon"></i> <span class="nav-link-text">Rejected</span></a>
+                                <a class="app-sidebar-sublink {{ request()->routeIs('payments.index') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-list app-icon"></i> <span class="nav-link-text">All Payments</span></a>
+                            </div>
+                    </div>
+                </li>
+            @endif
             
             @if ($paymentsOnlySidebar)
                 @if (auth()->user()?->canViewTripsModule())
