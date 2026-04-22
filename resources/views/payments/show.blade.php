@@ -238,6 +238,11 @@
             <a class="payment-top-action is-back text-decoration-none" href="{{ route('payments.index') }}" data-bs-toggle="tooltip" data-bs-placement="top" title="Back to Payments" aria-label="Back to Payments">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
+            @if ($canManagePayments)
+                <button class="payment-top-action border-0" type="button" style="background:#fff3cd;color:#997404;" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit Payment Status" aria-label="Edit Payment Status" data-payment-action="edit-status">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+            @endif
             @if ($canManagePayments && in_array($payment->status, ['due', 'on_hold'], true))
                 <form method="POST" action="{{ route('payments.approve', $payment) }}">
                     @csrf
@@ -487,6 +492,14 @@
                     </div>
                     <div class="modal-body">
                         <p class="payment-status-help" id="paymentStatusReasonHelp">Add a reason for this status update.</p>
+                        <div class="mb-3" id="paymentStatusSelectWrapper">
+                            <label class="form-label fw-semibold" for="payment_status_value">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="payment_status_value" name="status" data-no-select2>
+                                @foreach ($statuses as $statusValue => $statusLabel)
+                                    <option value="{{ $statusValue }}">{{ $statusLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="mb-0">
                             <label class="form-label fw-semibold" for="payment_status_reason">Reason <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="payment_status_reason" name="reason" rows="4" placeholder="Write the reason here..." required></textarea>
@@ -518,29 +531,92 @@
                 var modalForm = document.getElementById('paymentStatusReasonForm');
                 var modalTitle = document.getElementById('paymentStatusReasonModalLabel');
                 var modalHelp = document.getElementById('paymentStatusReasonHelp');
+                var modalStatusSelectWrapper = document.getElementById('paymentStatusSelectWrapper');
+                var modalStatusField = document.getElementById('payment_status_value');
                 var modalReasonField = document.getElementById('payment_status_reason');
                 var modalSubmitButton = document.getElementById('paymentStatusReasonSubmit');
+                var updateStatusUrl = @json(route('payments.status.update', $payment));
                 var holdUrl = @json(route('payments.hold', $payment));
                 var rejectUrl = @json(route('payments.reject', $payment));
+                var currentStatus = @json($payment->status);
+                var currentReason = @json($payment->remarks);
+                var shouldOpenEditModal = @json(request()->query('edit') === 'status');
 
-                document.querySelectorAll('[data-payment-action]').forEach(function (button) {
-                    button.addEventListener('click', function () {
-                        var isHold = button.getAttribute('data-payment-action') === 'hold';
+                var syncReasonRequirement = function () {
+                    if (!modalStatusField || !modalReasonField) {
+                        return;
+                    }
 
+                    var reasonRequired = ['on_hold', 'rejected'].includes(modalStatusField.value);
+                    modalReasonField.required = reasonRequired;
+                    modalReasonField.previousElementSibling.innerHTML = reasonRequired
+                        ? 'Reason <span class="text-danger">*</span>'
+                        : 'Reason <span class="text-muted">(optional)</span>';
+                    modalReasonField.placeholder = reasonRequired
+                        ? (modalStatusField.value === 'on_hold'
+                            ? 'Explain why this payment is on hold...'
+                            : 'Explain why this payment is rejected...')
+                        : 'Add an optional note for this status change...';
+                };
+
+                var openStatusEditor = function (config) {
+                    if (!modalElement || !modalForm || !modalReasonField || !modalStatusField) {
+                        return;
+                    }
+
+                    var mode = config.mode || 'edit';
+
+                    if (mode === 'edit') {
+                        modalForm.action = updateStatusUrl;
+                        modalTitle.textContent = 'Edit Payment Status';
+                        modalHelp.textContent = 'Update the payment status if this record was marked incorrectly.';
+                        modalStatusSelectWrapper.classList.remove('d-none');
+                        modalStatusField.value = config.status || currentStatus;
+                        modalReasonField.value = config.reason ?? (currentReason || '');
+                        modalSubmitButton.textContent = 'Update Status';
+                    } else {
+                        var isHold = mode === 'hold';
                         modalForm.action = isHold ? holdUrl : rejectUrl;
                         modalTitle.textContent = isHold ? 'Put Payment On Hold' : 'Reject Payment';
                         modalHelp.textContent = isHold
                             ? 'Add the reason for putting this payment on hold.'
                             : 'Add the reason for rejecting this payment.';
+                        modalStatusSelectWrapper.classList.add('d-none');
+                        modalStatusField.value = isHold ? 'on_hold' : 'rejected';
                         modalReasonField.value = '';
-                        modalReasonField.placeholder = isHold
-                            ? 'Explain why this payment is on hold...'
-                            : 'Explain why this payment is rejected...';
                         modalSubmitButton.textContent = isHold ? 'Mark On Hold' : 'Reject Payment';
+                    }
 
-                        window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+                    syncReasonRequirement();
+                    window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+                };
+
+                if (modalStatusField) {
+                    modalStatusField.addEventListener('change', syncReasonRequirement);
+                }
+
+                document.querySelectorAll('[data-payment-action]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var action = button.getAttribute('data-payment-action');
+
+                        if (action === 'edit-status') {
+                            openStatusEditor({
+                                mode: 'edit',
+                            });
+                            return;
+                        }
+
+                        openStatusEditor({
+                            mode: action,
+                        });
                     });
                 });
+
+                if (shouldOpenEditModal) {
+                    openStatusEditor({
+                        mode: 'edit',
+                    });
+                }
             });
         </script>
     @endpush

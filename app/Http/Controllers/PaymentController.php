@@ -58,6 +58,34 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function updateStatus(Request $request, TripCost $payment): RedirectResponse
+    {
+        $this->ensureCanManagePayments();
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:'.implode(',', array_keys(TripCost::STATUSES))],
+            'reason' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $status = $validated['status'];
+        $reason = trim((string) ($validated['reason'] ?? ''));
+
+        if (in_array($status, ['on_hold', 'rejected'], true) && $reason === '') {
+            return back()
+                ->withInput()
+                ->withErrors(['reason' => 'A reason is required for on hold or rejected payments.']);
+        }
+
+        $payment->update([
+            'status' => $status,
+            'remarks' => in_array($status, ['on_hold', 'rejected'], true) ? $reason : null,
+        ]);
+
+        $statusLabel = TripCost::STATUSES[$status] ?? Str::headline($status);
+
+        return back()->with('success', "Payment status updated to {$statusLabel} successfully.");
+    }
+
     public function exportCsv(Request $request): StreamedResponse
     {
         $filename = 'payments-'.now()->format('Ymd-His').'.csv';

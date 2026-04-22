@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/payments/export/pdf-table-view', [PaymentController::class, 'pdfTableView'])->name('payments.export.pdf-table-view');
     Route::patch('/payments/bulk-approve', [PaymentController::class, 'bulkApprove'])->name('payments.bulk-approve');
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
+    Route::patch('/payments/{payment}/status', [PaymentController::class, 'updateStatus'])->name('payments.status.update');
     Route::patch('/payments/{payment}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
     Route::patch('/payments/{payment}/hold', [PaymentController::class, 'hold'])->name('payments.hold');
     Route::patch('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
