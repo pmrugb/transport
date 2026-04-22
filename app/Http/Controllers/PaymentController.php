@@ -60,7 +60,7 @@ class PaymentController extends Controller
 
     public function updateStatus(Request $request, TripCost $payment): RedirectResponse
     {
-        $this->ensureCanManagePayments();
+        abort_unless(auth()->user()?->isSuperadmin(), 403);
 
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:'.implode(',', array_keys(TripCost::STATUSES))],

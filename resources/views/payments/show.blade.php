@@ -238,7 +238,7 @@
             <a class="payment-top-action is-back text-decoration-none" href="{{ route('payments.index') }}" data-bs-toggle="tooltip" data-bs-placement="top" title="Back to Payments" aria-label="Back to Payments">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            @if ($canManagePayments)
+            @if (auth()->user()?->isSuperadmin())
                 <button class="payment-top-action border-0" type="button" style="background:#fff3cd;color:#997404;" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit Payment Status" aria-label="Edit Payment Status" data-payment-action="edit-status">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </button>
