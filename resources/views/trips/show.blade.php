@@ -136,6 +136,12 @@
                                 <p class="fw-semibold mb-0">{{ $trip->remarks ?: 'N/A' }}</p>
                             </div>
                         </div>
+                        <div class="col-12">
+                            <div class="info-tile h-100">
+                                <p class="mini-note mb-2">Created Date</p>
+                                <p class="fw-semibold mb-0">{{ $trip->created_at?->format('d-m-Y h:i A') ?: 'N/A' }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
