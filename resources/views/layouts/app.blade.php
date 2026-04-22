@@ -475,6 +475,8 @@
 
                 const input = form.querySelector('.js-live-search-input');
                 let timer = null;
+                const liveSearchDelay = Number.parseInt(form.dataset.liveSearchDelay || '1000', 10);
+                const resolvedLiveSearchDelay = Number.isFinite(liveSearchDelay) ? liveSearchDelay : 1000;
 
                 form.addEventListener('submit', function (event) {
                     event.preventDefault();
@@ -508,7 +510,7 @@
                         window.clearTimeout(timer);
                         timer = window.setTimeout(function () {
                             form.requestSubmit();
-                        }, 250);
+                        }, resolvedLiveSearchDelay);
                     });
                 }
             });

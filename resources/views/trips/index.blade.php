@@ -239,7 +239,7 @@
                                 <h3 class="section-title">Trip Records</h3>
                                 <p class="section-copy">Complete listing of trip data entered through the trip management form.</p>
                             </div>
-                            <form method="GET" action="{{ route('trips.index') }}" class="ms-md-auto js-live-search-form" data-live-search-target="#tripsResultsRegion">
+                            <form method="GET" action="{{ route('trips.index') }}" class="ms-md-auto js-live-search-form" data-live-search-target="#tripsResultsRegion" data-live-search-delay="1000">
                                 <input type="hidden" name="status" value="{{ $filters['status'] }}">
                                 <input type="hidden" name="district_id" value="{{ $filters['district_id'] }}">
                                 <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
@@ -247,13 +247,13 @@
                                 <input type="hidden" name="created_by" value="{{ $filters['created_by'] }}">
                                 <input type="hidden" name="from_date" value="{{ $filters['from_date'] }}">
                                 <input type="hidden" name="to_date" value="{{ $filters['to_date'] }}">
-                                <div class="input-group input-group-sm" style="max-width: 220px;">
+                                <div class="input-group input-group-sm" style="max-width: 320px;">
                                     <input
                                         type="search"
                                         name="search"
                                         class="form-control form-control-sm js-live-search-input"
                                         value="{{ $search }}"
-                                        placeholder="Search"
+                                        placeholder="Type to search"
                                         autocomplete="off"
                                         aria-label="Search trip records"
                                     >
