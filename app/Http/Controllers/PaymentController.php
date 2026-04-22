@@ -92,12 +92,14 @@ class PaymentController extends Controller
 
         return response()->streamDownload(function () use ($request): void {
             $handle = fopen('php://output', 'w');
+            $serialNumber = 1;
 
             // Stream rows with a cursor so large exports do not hold the full dataset in memory.
-            fputcsv($handle, array_keys($this->paymentExportRow(new TripCost())));
+            fputcsv($handle, array_keys($this->paymentExportRow(new TripCost(), 1)));
 
             foreach ($this->filteredPaymentsQuery($request)->cursor() as $payment) {
-                fputcsv($handle, array_values($this->paymentExportRow($payment)));
+                fputcsv($handle, array_values($this->paymentExportRow($payment, $serialNumber)));
+                $serialNumber++;
             }
 
             fclose($handle);
@@ -112,7 +114,9 @@ class PaymentController extends Controller
         $filename = 'payments-'.now()->format('Ymd-His').'.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), 'payments-xlsx-');
 
-        $this->buildExcelExport($tempPath, $payments->map(fn (TripCost $payment): array => $this->paymentExportRow($payment))->all());
+        $this->buildExcelExport($tempPath, $payments->values()->map(
+            fn (TripCost $payment, int $index): array => $this->paymentExportRow($payment, $index + 1)
+        )->all());
 
         return response()->download(
             $tempPath,
@@ -124,7 +128,9 @@ class PaymentController extends Controller
     public function pdfView(Request $request): ViewContract
     {
         $payments = $this->filteredPaymentsQuery($request)->get();
-        $rows = $payments->map(fn (TripCost $payment): array => $this->paymentExportRow($payment))->all();
+        $rows = $payments->values()->map(
+            fn (TripCost $payment, int $index): array => $this->paymentExportRow($payment, $index + 1)
+        )->all();
 
         return view('payments.exports.pdf-view', [
             'payments' => $payments,
@@ -139,7 +145,9 @@ class PaymentController extends Controller
     public function pdfTableView(Request $request): ViewContract
     {
         $payments = $this->filteredPaymentsQuery($request)->get();
-        $rows = $payments->map(fn (TripCost $payment): array => $this->paymentExportRow($payment))->all();
+        $rows = $payments->values()->map(
+            fn (TripCost $payment, int $index): array => $this->paymentExportRow($payment, $index + 1)
+        )->all();
 
         return view('payments.exports.pdf-table-view', [
             'payments' => $payments,
@@ -408,7 +416,7 @@ class PaymentController extends Controller
         ];
     }
 
-    private function paymentExportRow(TripCost $payment): array
+    private function paymentExportRow(TripCost $payment, int $serialNumber = 1): array
     {
         $trip = $payment->trip;
         $transporter = $payment->transporter;
@@ -416,6 +424,7 @@ class PaymentController extends Controller
         $route = $payment->route;
 
         return [
+            'Sr #' => $serialNumber,
             'Payment Date' => $payment->calculation_date?->format('Y-m-d') ?: '',
             'Payment Status' => TripCost::STATUSES[$payment->status] ?? ($payment->status === 'approved' ? 'Paid' : Str::headline($payment->status)),
             'Transporter' => $transporter?->name ?: '',
@@ -447,6 +456,7 @@ class PaymentController extends Controller
     private function buildExcelExport(string $path, array $rows): void
     {
         $headers = array_keys($rows[0] ?? [
+            'Sr #' => '',
             'Payment Date' => '',
             'Payment Status' => '',
             'Transporter' => '',

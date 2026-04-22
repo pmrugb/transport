@@ -59,9 +59,11 @@ class ReportController extends Controller
         return response()->streamDownload(function () use ($request, $columns): void {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, array_values($columns));
+            $serialNumber = 1;
 
             foreach ($this->filteredReportsQuery($request)->cursor() as $report) {
-                fputcsv($handle, array_values($this->reportExportRow($report, $columns)));
+                fputcsv($handle, array_values($this->reportExportRow($report, $columns, $serialNumber)));
+                $serialNumber++;
             }
 
             fclose($handle);
@@ -77,7 +79,8 @@ class ReportController extends Controller
         $columns = $this->selectedReportExportColumns($request);
         $rows = $this->filteredReportsQuery($request)
             ->get()
-            ->map(fn (TripCost $report): array => $this->reportExportRow($report, $columns))
+            ->values()
+            ->map(fn (TripCost $report, int $index): array => $this->reportExportRow($report, $columns, $index + 1))
             ->all();
         $filename = 'reports-'.now()->format('Ymd-His').'.xlsx';
         $tempPath = tempnam(sys_get_temp_dir(), 'reports-xlsx-');
@@ -98,7 +101,8 @@ class ReportController extends Controller
         $columns = $this->selectedReportExportColumns($request);
         $rows = $this->filteredReportsQuery($request)
             ->get()
-            ->map(fn (TripCost $report): array => $this->reportExportRow($report, $columns))
+            ->values()
+            ->map(fn (TripCost $report, int $index): array => $this->reportExportRow($report, $columns, $index + 1))
             ->all();
         $filters = $this->filterValues($request);
 
@@ -192,6 +196,7 @@ class ReportController extends Controller
     private function reportExportColumns(): array
     {
         return [
+            'sr_no' => 'Sr #',
             'trip_date' => 'Trip Date',
             'payment_date' => 'Payment Date',
             'status' => 'Payment Status',
@@ -219,7 +224,7 @@ class ReportController extends Controller
         return $selected !== [] ? $selected : $available;
     }
 
-    private function reportExportRow(TripCost $report, array $columns): array
+    private function reportExportRow(TripCost $report, array $columns, int $serialNumber = 1): array
     {
         $trip = $report->trip;
         $route = $report->route;
@@ -227,6 +232,7 @@ class ReportController extends Controller
         $transporter = $report->transporter;
 
         $row = [
+            'sr_no' => $serialNumber,
             'trip_date' => $trip?->trip_date?->format('Y-m-d') ?: '',
             'payment_date' => $report->calculation_date?->format('Y-m-d') ?: '',
             'status' => TripCost::STATUSES[$report->status] ?? ucfirst((string) $report->status),
