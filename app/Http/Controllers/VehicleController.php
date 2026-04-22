@@ -83,6 +83,7 @@ class VehicleController extends Controller
     public function pdfView(Request $request): View
     {
         $columns = $this->selectedVehicleExportColumns($request);
+        $filters = $this->filterValues($request);
         $rows = $this->filteredVehiclesQuery($request)
             ->get()
             ->values()
@@ -95,7 +96,19 @@ class VehicleController extends Controller
             'columns' => $columns,
             'rows' => $rows,
             'filters' => [
-                'Search' => $this->filterValues($request)['search'],
+                'Search' => $filters['search'],
+                'Transporter' => $filters['transporter_id']
+                    ? Operator::query()->whereKey($filters['transporter_id'])->value('name')
+                    : null,
+                'Vehicle Type' => $filters['vehicle_type']
+                    ? VehicleType::query()->whereKey($filters['vehicle_type'])->value('name')
+                    : null,
+                'Route' => $filters['route_id']
+                    ? TransportRoute::query()->whereKey($filters['route_id'])->value('route_name')
+                    : null,
+                'Status' => $filters['status']
+                    ? (Vehicle::STATUSES[$filters['status']] ?? ucfirst((string) $filters['status']))
+                    : null,
             ],
         ]);
     }
@@ -216,6 +229,10 @@ class VehicleController extends Controller
                         ->orWhereHas('route', fn ($routeQuery) => $routeQuery->where('route_name', 'like', "%{$search}%"));
                 });
             })
+            ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
+            ->when($filters['vehicle_type'], fn ($query, $vehicleType) => $query->where('vehicle_type', $vehicleType))
+            ->when($filters['route_id'], fn ($query, $routeId) => $query->where('route_id', $routeId))
+            ->when($filters['status'], fn ($query, $status) => $query->where('status', $status))
             ->latest();
     }
 
@@ -223,6 +240,10 @@ class VehicleController extends Controller
     {
         return [
             'search' => trim((string) $request->input('search', '')),
+            'transporter_id' => $request->integer('transporter_id') ?: null,
+            'vehicle_type' => $request->integer('vehicle_type') ?: null,
+            'route_id' => $request->integer('route_id') ?: null,
+            'status' => $request->input('status'),
         ];
     }
 

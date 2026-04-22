@@ -2,6 +2,71 @@
 
 @section('content')
     <style>
+        .vehicle-filter-card {
+            border-radius: 1rem;
+        }
+
+        .vehicle-filter-card .card-header {
+            padding: 0.8rem 0.95rem;
+            border-bottom-width: 1px;
+        }
+
+        .vehicle-filter-card .card-body {
+            padding: 0.85rem 0.95rem 0.95rem;
+        }
+
+        .vehicle-filter-card .form-label {
+            font-size: 0.82rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .vehicle-filter-card .form-control,
+        .vehicle-filter-card .form-select {
+            min-height: 40px;
+            border-radius: 0.8rem;
+            font-size: 0.88rem;
+            padding-top: 0.45rem;
+            padding-bottom: 0.45rem;
+        }
+
+        .vehicle-filter-grid {
+            row-gap: 0.7rem;
+        }
+
+        .vehicle-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .vehicle-filter-title {
+            margin: 0;
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #2c3a4d;
+        }
+
+        .vehicle-filter-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .vehicle-filter-actions .btn {
+            min-width: 0;
+            padding: 0.65rem 0.8rem;
+            border-radius: 0.75rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .vehicle-filter-actions .btn-outline-secondary {
+            min-width: 94px;
+        }
+
         .export-columns-toggle {
             cursor: pointer;
             font-size: 0.82rem;
@@ -43,6 +108,10 @@
                     <div class="card-body">
                         <form method="GET" class="d-flex flex-column gap-3">
                             <input type="hidden" name="search" value="{{ $filters['search'] }}">
+                            <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
+                            <input type="hidden" name="vehicle_type" value="{{ $filters['vehicle_type'] }}">
+                            <input type="hidden" name="route_id" value="{{ $filters['route_id'] }}">
+                            <input type="hidden" name="status" value="{{ $filters['status'] }}">
                             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                                 <div>
                                     <h3 class="section-title mb-1">Export Vehicles</h3>
@@ -76,6 +145,60 @@
                         </form>
                     </div>
                 </div>
+                <div class="card section-card vehicle-filter-card mb-4">
+                    <div class="card-header">
+                        <div class="vehicle-toolbar">
+                            <h3 class="vehicle-filter-title">Filters</h3>
+                            <div class="vehicle-filter-actions">
+                                <button class="btn btn-success" form="vehicleFilters" type="submit"><i class="fa-solid fa-filter me-2"></i>Apply Filters</button>
+                                <a class="btn btn-outline-secondary" href="{{ route('vehicles.index') }}"><i class="fa-solid fa-rotate-right me-2"></i>Reset</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="{{ route('vehicles.index') }}" id="vehicleFilters">
+                            <input type="hidden" name="search" value="{{ $filters['search'] }}">
+                            <div class="row vehicle-filter-grid">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold" for="transporter_id">Transporter</label>
+                                    <select class="form-select" id="transporter_id" name="transporter_id">
+                                        <option value="">All transporters</option>
+                                        @foreach ($transporters as $transporter)
+                                            <option value="{{ $transporter->id }}" @selected((string) $filters['transporter_id'] === (string) $transporter->id)>{{ $transporter->name }}{{ $transporter->cnic ? ' - '.$transporter->cnic : '' }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold" for="vehicle_type">Vehicle Type</label>
+                                    <select class="form-select" id="vehicle_type" name="vehicle_type">
+                                        <option value="">All vehicle types</option>
+                                        @foreach ($vehicleTypes as $vehicleType)
+                                            <option value="{{ $vehicleType->id }}" @selected((string) $filters['vehicle_type'] === (string) $vehicleType->id)>{{ $vehicleType->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold" for="route_id">Route</label>
+                                    <select class="form-select" id="route_id" name="route_id">
+                                        <option value="">All routes</option>
+                                        @foreach ($routes as $route)
+                                            <option value="{{ $route->id }}" @selected((string) $filters['route_id'] === (string) $route->id)>{{ $route->route_name }} ({{ $route->starting_point }} → {{ $route->ending_point }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold" for="status">Status</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="">All statuses</option>
+                                        @foreach ($statuses as $value => $label)
+                                            <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
                 <div class="card section-card table-card mb-4">
                     <div class="card-header">
                         <div class="table-toolbar align-items-start align-items-md-center">
@@ -84,6 +207,10 @@
                                 <p class="section-copy">Complete listing of vehicles available in the system.</p>
                             </div>
                             <form method="GET" action="{{ route('vehicles.index') }}" class="ms-md-auto js-live-search-form" data-live-search-target="#vehiclesResultsRegion">
+                                <input type="hidden" name="transporter_id" value="{{ $filters['transporter_id'] }}">
+                                <input type="hidden" name="vehicle_type" value="{{ $filters['vehicle_type'] }}">
+                                <input type="hidden" name="route_id" value="{{ $filters['route_id'] }}">
+                                <input type="hidden" name="status" value="{{ $filters['status'] }}">
                                 <div class="input-group input-group-sm" style="max-width: 220px;">
                                     <input
                                         type="search"
