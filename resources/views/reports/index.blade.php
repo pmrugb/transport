@@ -35,6 +35,38 @@
             display: flex;
             flex-direction: column;
         }
+
+        .report-results-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .report-results-pill {
+            min-width: 180px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d7e7dd;
+            border-radius: 0.9rem;
+            background: #f8fbf9;
+        }
+
+        .report-results-pill-label {
+            display: block;
+            margin-bottom: 0.2rem;
+            color: #5f6f65;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .report-results-pill-value {
+            display: block;
+            color: #146c43;
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
     </style>
 
     <div class="page-hero d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3">
@@ -46,10 +78,9 @@
     </div>
 
     <section class="row g-4 stats-overlap">
-        <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Filtered Records</p><h2 class="stat-value">{{ $stats['records'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-chart-line app-icon"></i></span></div><p class="stat-note">Records matching the current report filters.</p></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Due Payments</p><h2 class="stat-value">{{ $stats['due'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-hourglass-half app-icon"></i></span></div><p class="stat-note">Outstanding due payments in the report set.</p></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Paid Payments</p><h2 class="stat-value">{{ $stats['paid'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-circle-check app-icon"></i></span></div><p class="stat-note">Paid records visible in the current report.</p></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Total Amount</p><h2 class="stat-value stat-value-compact">{{ number_format((float) $stats['amount'], 0) }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-wallet app-icon"></i></span></div><p class="stat-note">Combined amount across the filtered report data.</p></div></div></div>
+        <div class="col-sm-6 col-xl-4"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Filtered Records</p><h2 class="stat-value">{{ $stats['records'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-chart-line app-icon"></i></span></div><p class="stat-note">Records matching the current report filters.</p></div></div></div>
+        <div class="col-sm-6 col-xl-4"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Due Payments</p><h2 class="stat-value">{{ $stats['due'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-hourglass-half app-icon"></i></span></div><p class="stat-note">Outstanding due payments in the report set.</p></div></div></div>
+        <div class="col-sm-6 col-xl-4"><div class="card stat-card"><div class="card-body"><div class="stat-card-head"><div><p class="stat-label">Paid Payments</p><h2 class="stat-value">{{ $stats['paid'] }}</h2></div><span class="stat-card-icon"><i class="fa-solid fa-circle-check app-icon"></i></span></div><p class="stat-note">Paid records visible in the current report.</p></div></div></div>
     </section>
 
     <section class="row g-4 mt-2">
@@ -172,6 +203,16 @@
                         <div>
                             <h3 class="section-title mb-1">Report Results</h3>
                             <p class="section-copy mb-0">Professional reporting view for transport operations, payment status, and route activity.</p>
+                        </div>
+                        <div class="report-results-summary">
+                            <div class="report-results-pill">
+                                <span class="report-results-pill-label">Total Trips</span>
+                                <span class="report-results-pill-value">{{ number_format((int) $stats['trips']) }}</span>
+                            </div>
+                            <div class="report-results-pill">
+                                <span class="report-results-pill-label">Total Amount</span>
+                                <span class="report-results-pill-value">{{ number_format((float) $stats['amount'], 0) }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

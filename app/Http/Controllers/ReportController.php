@@ -42,6 +42,7 @@ class ReportController extends Controller
                 ->withQueryString(),
             'stats' => [
                 'records' => (clone $statsQuery)->count(),
+                'trips' => (int) ((clone $statsQuery)->sum('no_of_trips') ?: 0),
                 'due' => (clone $statsQuery)->where('status', 'due')->count(),
                 'paid' => (clone $statsQuery)->where('status', 'paid')->count(),
                 'amount' => (float) ((clone $statsQuery)->sum('total_amount') ?: 0),
