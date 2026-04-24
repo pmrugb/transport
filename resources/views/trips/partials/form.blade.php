@@ -205,7 +205,7 @@
         </div>
 
         <div class="col-12 d-flex flex-wrap gap-2">
-            <button class="btn btn-success" type="submit">{{ $submitLabel }}</button>
+            <button class="btn btn-success" id="tripSubmitButton" type="submit" data-processing-label="Saving...">{{ $submitLabel }}</button>
             <a class="btn btn-outline-secondary" href="{{ route('trips.index') }}">Back</a>
         </div>
     </div>
@@ -365,6 +365,7 @@
             const cnicField = document.getElementById('driver_cnic');
             const mobileField = document.getElementById('driver_mobile');
             const cnicRequiredMarker = document.getElementById('driver_cnic_required');
+            const submitButton = document.getElementById('tripSubmitButton');
             const vehicleDetailsUrl = form.dataset.vehicleDetailsUrl;
             const routeDetailsUrl = form.dataset.routeDetailsUrl;
             const quickTransporterForm = document.getElementById('quickTransporterForm');
@@ -381,7 +382,9 @@
             const quickTransporterAddressField = document.getElementById('quick_transporter_address');
             const quickTransporterEasypaisaField = document.getElementById('quick_transporter_easypaisa');
             const quickVehicleTransporterField = document.getElementById('quick_vehicle_transporter_id');
+            const submitButtonDefaultLabel = submitButton ? submitButton.innerHTML : '';
             let baseFareAmount = Number(fareAmountField.value || 0);
+            let isSubmitting = false;
 
             [quickTransporterModalElement, quickVehicleModalElement].forEach(function (modalElement) {
                 if (modalElement && modalElement.parentElement !== document.body) {
@@ -1054,11 +1057,24 @@
             syncHiddenFields();
 
             form.addEventListener('submit', function (event) {
+                if (isSubmitting) {
+                    event.preventDefault();
+                    return;
+                }
+
                 syncHiddenFields();
                 const isValid = requiredFields.every(validateField);
 
                 if (!isValid) {
                     event.preventDefault();
+                    return;
+                }
+
+                isSubmitting = true;
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = submitButton.dataset.processingLabel || submitButtonDefaultLabel;
                 }
             });
         });
