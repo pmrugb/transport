@@ -225,7 +225,6 @@
                                     <th>Trip Date</th>
                                     <th>Payment Date</th>
                                     <th>Status</th>
-                                    <th>Department</th>
                                     <th>District</th>
                                     <th>Route</th>
                                     <th>Transporter</th>
@@ -248,7 +247,6 @@
                                         <td class="text-nowrap">{{ $trip?->trip_date?->format('Y-m-d') ?: 'N/A' }}</td>
                                         <td class="text-nowrap">{{ $report->calculation_date?->format('Y-m-d') ?: 'N/A' }}</td>
                                         <td>{{ $statuses[$report->status] ?? ucfirst($report->status) }}</td>
-                                        <td>{{ $trip?->department?->name ?: 'N/A' }}</td>
                                         <td>{{ $districtLabel }}</td>
                                         <td>{{ $route?->route_name ?: 'N/A' }}</td>
                                         <td>{{ $report->transporter?->name ?: 'N/A' }}</td>
@@ -259,7 +257,7 @@
                                         <td>{{ number_format((float) $report->total_amount, 2) }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="13" class="text-center text-muted py-4">No report records found for the selected filters.</td></tr>
+                                    <tr><td colspan="12" class="text-center text-muted py-4">No report records found for the selected filters.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
