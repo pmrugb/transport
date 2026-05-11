@@ -13,6 +13,8 @@ class DistrictController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanManageDistricts();
+
         $perPage = $this->resolvePerPage($request);
         $districtQuery = District::query()
             ->with('division')
@@ -29,6 +31,8 @@ class DistrictController extends Controller
 
     public function edit(District $district): View
     {
+        $this->ensureCanManageDistricts();
+
         return view('settings.districts.edit', [
             'district' => $district,
             'divisions' => Division::query()->orderBy('name')->get(),
@@ -37,6 +41,8 @@ class DistrictController extends Controller
 
     public function store(StoreDistrictRequest $request): RedirectResponse
     {
+        $this->ensureCanManageDistricts();
+
         $division = Division::query()->findOrFail($request->integer('division_id'));
 
         District::create([
@@ -51,6 +57,8 @@ class DistrictController extends Controller
 
     public function update(StoreDistrictRequest $request, District $district): RedirectResponse
     {
+        $this->ensureCanManageDistricts();
+
         $division = Division::query()->findOrFail($request->integer('division_id'));
 
         $district->update([
@@ -65,9 +73,16 @@ class DistrictController extends Controller
 
     public function destroy(District $district): RedirectResponse
     {
+        $this->ensureCanManageDistricts();
+
         $district->delete();
 
         return redirect()->route('settings.districts.index')
             ->with('success', 'District deleted successfully.');
+    }
+
+    private function ensureCanManageDistricts(): void
+    {
+        abort_unless(auth()->user()?->canManageDistricts(), 403);
     }
 }

@@ -2,6 +2,7 @@
     <div class="offcanvas offcanvas-start app-mobile-menu" tabindex="-1" id="appMobileMenu" aria-labelledby="appMobileMenuLabel">
         @php($paymentsOnlySidebar = auth()->user()?->hasPaymentsOnlySidebar() ?? false)
         @php($canSeePaymentsNav = auth()->user()?->canSeePaymentsNav() ?? false)
+        @php($user = auth()->user())
         <div class="offcanvas-header">
             <a class="app-sidebar-brand mb-0" href="{{ route('dashboard') }}">
                 <span class="app-brand-mark">
@@ -19,6 +20,7 @@
         <div class="offcanvas-body">
             <ul class="nav flex-column app-sidebar-nav" id="mobileSidebarAccordion">
                 @unless ($paymentsOnlySidebar)
+                    @if ($user?->canAccessSidebar('dashboard'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                             <span class="nav-link-icon"><i class="fa-solid fa-gauge-high app-icon"></i></span>
@@ -26,6 +28,8 @@
                             <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                         </a>
                     </li>
+                    @endif
+                    @if ($user?->canAccessSidebar('trips'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('trips.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('trips.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileTripsMenu" aria-expanded="{{ request()->routeIs('trips.*') ? 'true' : 'false' }}" aria-controls="mobileTripsMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-road-circle-check app-icon"></i></span>
@@ -35,13 +39,15 @@
                         <div class="collapse {{ request()->routeIs('trips.*') ? 'show' : '' }}" id="mobileTripsMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('trips.index') ? 'active' : '' }}" href="{{ route('trips.index') }}">All Trips</a>
-                                @if (auth()->user()?->canCreateTrips())
+                                @if ($user?->canCreateTrips())
                                     <a class="app-sidebar-sublink {{ request()->routeIs('trips.create') ? 'active' : '' }}" href="{{ route('trips.create') }}">Add Trip</a>
                                 @endif
                             </div>
                         </div>
                     </li>
+                    @endif
                 @else
+                    @if ($user?->canAccessSidebar('dashboard'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                             <span class="nav-link-icon"><i class="fa-solid fa-building-user app-icon"></i></span>
@@ -49,6 +55,7 @@
                             <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                         </a>
                     </li>
+                    @endif
                 @endunless
                 @if ($canSeePaymentsNav)
                     <li class="nav-item nav-item-group {{ request()->routeIs('payments.*') ? 'open' : '' }}">
@@ -69,7 +76,7 @@
                     </li>
                 @endif
                 @if ($paymentsOnlySidebar)
-                    @if (auth()->user()?->canViewTripsModule())
+                    @if ($user?->canAccessSidebar('trips') && $user?->canViewTripsModule())
                         <li class="nav-item nav-item-group {{ request()->routeIs('trips.*') ? 'open' : '' }}">
                             <button class="nav-link nav-link-group-toggle {{ request()->routeIs('trips.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNatcoTripsMenu" aria-expanded="{{ request()->routeIs('trips.*') ? 'true' : 'false' }}" aria-controls="mobileNatcoTripsMenu">
                                 <span class="nav-link-icon"><i class="fa-solid fa-road-circle-check app-icon"></i></span>
@@ -79,13 +86,14 @@
                             <div class="collapse {{ request()->routeIs('trips.*') ? 'show' : '' }}" id="mobileNatcoTripsMenu" data-bs-parent="#mobileSidebarAccordion">
                                 <div class="app-sidebar-submenu">
                                     <a class="app-sidebar-sublink {{ request()->routeIs('trips.index') ? 'active' : '' }}" href="{{ route('trips.index') }}">All Trips</a>
-                                    @if (auth()->user()?->canCreateTrips())
+                                    @if ($user?->canCreateTrips())
                                         <a class="app-sidebar-sublink {{ request()->routeIs('trips.create') ? 'active' : '' }}" href="{{ route('trips.create') }}">Add Trip</a>
                                     @endif
                                 </div>
                             </div>
                         </li>
                     @endif
+                    @if ($user?->canAccessSidebar('challans'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('challans.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('challans.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileChallansMenu" aria-expanded="{{ request()->routeIs('challans.*') ? 'true' : 'false' }}" aria-controls="mobileChallansMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-file-circle-check app-icon"></i></span>
@@ -98,6 +106,8 @@
                             </div>
                         </div>
                     </li>
+                    @endif
+                    @if ($user?->canAccessSidebar('settings.profile'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('settings.profile.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('settings.profile.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNatcoSettingsMenu" aria-expanded="{{ request()->routeIs('settings.profile.*') ? 'true' : 'false' }}" aria-controls="mobileNatcoSettingsMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-gear app-icon"></i></span>
@@ -110,9 +120,10 @@
                             </div>
                         </div>
                     </li>
+                    @endif
                 @endif
                 @unless ($paymentsOnlySidebar)
-                    @if (auth()->user()?->isSuperadmin())
+                    @if ($user?->canAccessSidebar('reports') && $user?->canViewReports())
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
                                 <span class="nav-link-icon"><i class="fa-solid fa-chart-column app-icon"></i></span>
@@ -121,6 +132,7 @@
                             </a>
                         </li>
                     @endif
+                    @if ($user?->canAccessSidebar('transporters'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('transporters.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('transporters.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileTransporterMenu" aria-expanded="{{ request()->routeIs('transporters.*') ? 'true' : 'false' }}" aria-controls="mobileTransporterMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-users app-icon"></i></span>
@@ -130,10 +142,14 @@
                         <div class="collapse {{ request()->routeIs('transporters.*') ? 'show' : '' }}" id="mobileTransporterMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('transporters.index') ? 'active' : '' }}" href="{{ route('transporters.index') }}">All Transporters</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('transporters.create') ? 'active' : '' }}" href="{{ route('transporters.create') }}">Add new Transporters</a>
+                                @if ($user?->canCreateTransporters())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('transporters.create') ? 'active' : '' }}" href="{{ route('transporters.create') }}">Add new Transporters</a>
+                                @endif
                             </div>
                         </div>
                     </li>
+                    @endif
+                    @if ($user?->canAccessSidebar('routes'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('routes.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('routes.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileRoutesMenu" aria-expanded="{{ request()->routeIs('routes.*') ? 'true' : 'false' }}" aria-controls="mobileRoutesMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-route app-icon"></i></span>
@@ -143,10 +159,14 @@
                         <div class="collapse {{ request()->routeIs('routes.*') ? 'show' : '' }}" id="mobileRoutesMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('routes.index') ? 'active' : '' }}" href="{{ route('routes.index') }}">All Routes</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('routes.create') ? 'active' : '' }}" href="{{ route('routes.create') }}">Add New Route</a>
+                                @if ($user?->canCreateRoutes())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('routes.create') ? 'active' : '' }}" href="{{ route('routes.create') }}">Add New Route</a>
+                                @endif
                             </div>
                         </div>
                     </li>
+                    @endif
+                    @if ($user?->canAccessSidebar('challans'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('challans.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('challans.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileChallansMenu" aria-expanded="{{ request()->routeIs('challans.*') ? 'true' : 'false' }}" aria-controls="mobileChallansMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-file-circle-check app-icon"></i></span>
@@ -156,12 +176,14 @@
                         <div class="collapse {{ request()->routeIs('challans.*') ? 'show' : '' }}" id="mobileChallansMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('challans.index') || request()->routeIs('challans.show') || request()->routeIs('challans.edit') ? 'active' : '' }}" href="{{ route('challans.index') }}">All Challans</a>
-                                @if (auth()->user()?->isSuperadmin())
+                                @if ($user?->canCreateChallans())
                                     <a class="app-sidebar-sublink {{ request()->routeIs('challans.create') ? 'active' : '' }}" href="{{ route('challans.create') }}">Add Challans</a>
                                 @endif
                             </div>
                         </div>
                     </li>
+                    @endif
+                    @if ($user?->canAccessSidebar('vehicles'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('vehicles.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('vehicles.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileVehiclesMenu" aria-expanded="{{ request()->routeIs('vehicles.*') ? 'true' : 'false' }}" aria-controls="mobileVehiclesMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-van-shuttle app-icon"></i></span>
@@ -171,23 +193,34 @@
                         <div class="collapse {{ request()->routeIs('vehicles.*') ? 'show' : '' }}" id="mobileVehiclesMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('vehicles.index') ? 'active' : '' }}" href="{{ route('vehicles.index') }}">All Vehicles</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('vehicles.create') ? 'active' : '' }}" href="{{ route('vehicles.create') }}">Add Vehicle</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('vehicles.types.*') ? 'active' : '' }}" href="{{ route('vehicles.types.index') }}">Vehicle Types</a>
+                                @if ($user?->canCreateVehicles())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('vehicles.create') ? 'active' : '' }}" href="{{ route('vehicles.create') }}">Add Vehicle</a>
+                                @endif
+                                @if ($user?->canManageVehicleTypes())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('vehicles.types.*') ? 'active' : '' }}" href="{{ route('vehicles.types.index') }}">Vehicle Types</a>
+                                @endif
                             </div>
                         </div>
                     </li>
-                    <li class="nav-item nav-item-group {{ request()->routeIs('logs.security.*') ? 'open' : '' }}">
-                        <button class="nav-link nav-link-group-toggle {{ request()->routeIs('logs.security.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileLogsMenu" aria-expanded="{{ request()->routeIs('logs.security.*') ? 'true' : 'false' }}" aria-controls="mobileLogsMenu">
+                    @endif
+                    @if ($user?->canAccessSidebar('logs.security') || $user?->canAccessSidebar('logs.audit'))
+                    <li class="nav-item nav-item-group {{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'open' : '' }}">
+                        <button class="nav-link nav-link-group-toggle {{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileLogsMenu" aria-expanded="{{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'true' : 'false' }}" aria-controls="mobileLogsMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-clipboard-list app-icon"></i></span>
                             <span class="nav-link-text">Logs</span>
                             <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                         </button>
-                        <div class="collapse {{ request()->routeIs('logs.security.*') ? 'show' : '' }}" id="mobileLogsMenu" data-bs-parent="#mobileSidebarAccordion">
+                        <div class="collapse {{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'show' : '' }}" id="mobileLogsMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
                                 <a class="app-sidebar-sublink {{ request()->routeIs('logs.security.*') ? 'active' : '' }}" href="{{ route('logs.security.index') }}">Security Logs</a>
+                                @if ($user?->canAccessSidebar('logs.audit'))
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('logs.audit.*') ? 'active' : '' }}" href="{{ route('logs.audit.index') }}">Audit Logs</a>
+                                @endif
                             </div>
                         </div>
                     </li>
+                    @endif
+                    @if ($user?->canAccessSidebar('settings.profile') || $user?->canAccessSidebar('settings.captcha') || $user?->canAccessSidebar('settings.users') || $user?->canAccessSidebar('settings.roles') || $user?->canAccessSidebar('settings.divisions') || $user?->canAccessSidebar('settings.districts') || $user?->canAccessSidebar('settings.departments'))
                     <li class="nav-item nav-item-group {{ request()->routeIs('users.*') || request()->routeIs('settings.profile.*') || request()->routeIs('settings.captcha.*') || request()->routeIs('settings.divisions.*') || request()->routeIs('settings.districts.*') || request()->routeIs('settings.departments.*') || request()->routeIs('settings.roles.*') ? 'open' : '' }}">
                         <button class="nav-link nav-link-group-toggle {{ request()->routeIs('users.*') || request()->routeIs('settings.profile.*') || request()->routeIs('settings.captcha.*') || request()->routeIs('settings.divisions.*') || request()->routeIs('settings.districts.*') || request()->routeIs('settings.departments.*') || request()->routeIs('settings.roles.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#mobileSettingsMenu" aria-expanded="{{ request()->routeIs('users.*') || request()->routeIs('settings.profile.*') || request()->routeIs('settings.captcha.*') || request()->routeIs('settings.divisions.*') || request()->routeIs('settings.districts.*') || request()->routeIs('settings.departments.*') || request()->routeIs('settings.roles.*') ? 'true' : 'false' }}" aria-controls="mobileSettingsMenu">
                             <span class="nav-link-icon"><i class="fa-solid fa-gear app-icon"></i></span>
@@ -196,18 +229,33 @@
                         </button>
                         <div class="collapse {{ request()->routeIs('users.*') || request()->routeIs('settings.profile.*') || request()->routeIs('settings.captcha.*') || request()->routeIs('settings.divisions.*') || request()->routeIs('settings.districts.*') || request()->routeIs('settings.departments.*') || request()->routeIs('settings.roles.*') ? 'show' : '' }}" id="mobileSettingsMenu" data-bs-parent="#mobileSidebarAccordion">
                             <div class="app-sidebar-submenu">
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.profile.edit') ? 'active' : '' }}" href="{{ route('settings.profile.edit') }}">Edit Profile</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.captcha.*') ? 'active' : '' }}" href="{{ route('settings.captcha.edit') }}">Captcha Settings</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('users.create') ? 'active' : '' }}" href="{{ route('users.create') }}">Add New User</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('users.index') || request()->routeIs('users.all') || request()->routeIs('users.edit') ? 'active' : '' }}" href="{{ route('users.all') }}">All Users</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.roles.create') ? 'active' : '' }}" href="{{ route('settings.roles.create') }}">Add Roles</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.roles.index') || request()->routeIs('settings.roles.edit') ? 'active' : '' }}" href="{{ route('settings.roles.index') }}">All Roles</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.divisions.*') ? 'active' : '' }}" href="{{ route('settings.divisions.index') }}">Divisions</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.districts.*') ? 'active' : '' }}" href="{{ route('settings.districts.index') }}">Districts</a>
-                                <a class="app-sidebar-sublink {{ request()->routeIs('settings.departments.*') ? 'active' : '' }}" href="{{ route('settings.departments.index') }}">Departments</a>
+                                @if ($user?->canAccessSidebar('settings.profile'))
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.profile.edit') ? 'active' : '' }}" href="{{ route('settings.profile.edit') }}">Edit Profile</a>
+                                @endif
+                                @if ($user?->canAccessSidebar('settings.captcha'))
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.captcha.*') ? 'active' : '' }}" href="{{ route('settings.captcha.edit') }}">Captcha Settings</a>
+                                @endif
+                                @if ($user?->canAccessSidebar('settings.users') && $user?->canManageUsers())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('users.create') ? 'active' : '' }}" href="{{ route('users.create') }}">Add New User</a>
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('users.index') || request()->routeIs('users.all') || request()->routeIs('users.edit') ? 'active' : '' }}" href="{{ route('users.all') }}">All Users</a>
+                                @endif
+                                @if ($user?->canAccessSidebar('settings.roles') && $user?->canManageRoles())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.roles.create') ? 'active' : '' }}" href="{{ route('settings.roles.create') }}">Add Roles</a>
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.roles.index') || request()->routeIs('settings.roles.edit') ? 'active' : '' }}" href="{{ route('settings.roles.index') }}">All Roles</a>
+                                @endif
+                                @if ($user?->canAccessSidebar('settings.divisions') && $user?->canManageDivisions())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.divisions.*') ? 'active' : '' }}" href="{{ route('settings.divisions.index') }}">Divisions</a>
+                                @endif
+                                @if ($user?->canAccessSidebar('settings.districts') && $user?->canManageDistricts())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.districts.*') ? 'active' : '' }}" href="{{ route('settings.districts.index') }}">Districts</a>
+                                @endif
+                                @if ($user?->canAccessSidebar('settings.departments') && $user?->canManageDepartments())
+                                    <a class="app-sidebar-sublink {{ request()->routeIs('settings.departments.*') ? 'active' : '' }}" href="{{ route('settings.departments.index') }}">Departments</a>
+                                @endif
                             </div>
                         </div>
                     </li>
+                    @endif
                 @endunless
             </ul>
 

@@ -459,37 +459,8 @@
                                                     <i class="fa-solid fa-ellipsis"></i>
                                                 </button>
                                                 <ul class="dropdown-menu dropdown-menu-end topbar-dropdown-menu">
-                                                    <li>
-                                                        <button
-                                                            class="dropdown-item"
-                                                            type="button"
-                                                            data-role-details-trigger
-                                                            data-role-id="{{ $role->id }}"
-                                                            data-role-name="{{ $role->name }}"
-                                                            data-role-slug="{{ $role->slug }}"
-                                                            data-role-description="{{ $role->description }}"
-                                                            data-role-is-system="{{ $role->is_system ? '1' : '0' }}"
-                                                        >
-                                                            <i class="fa-solid fa-pen me-2"></i>Edit Details
-                                                        </button>
-                                                    </li>
-                                                    <li>
-                                                        <button
-                                                            class="dropdown-item"
-                                                            type="button"
-                                                            data-role-access-trigger
-                                                            data-role-id="{{ $role->id }}"
-                                                            data-role-access-scope="{{ $role->access_scope }}"
-                                                            data-role-can-view="{{ $role->can_view ? '1' : '0' }}"
-                                                            data-role-can-create="{{ $role->can_create ? '1' : '0' }}"
-                                                            data-role-can-edit="{{ $role->can_edit ? '1' : '0' }}"
-                                                            data-role-can-delete="{{ $role->can_delete ? '1' : '0' }}"
-                                                            data-role-can-manage-users="{{ $role->can_manage_users ? '1' : '0' }}"
-                                                            data-role-can-manage-system-settings="{{ $role->can_manage_system_settings ? '1' : '0' }}"
-                                                        >
-                                                            <i class="fa-solid fa-shield-halved me-2"></i>Edit Access
-                                                        </button>
-                                                    </li>
+                                                    <li><a class="dropdown-item" href="{{ route('settings.roles.edit', $role) }}"><i class="fa-solid fa-pen me-2"></i>Edit Details</a></li>
+                                                    <li><a class="dropdown-item" href="{{ route('settings.roles.edit', $role) }}#role-access-builder"><i class="fa-solid fa-shield-halved me-2"></i>Edit Access</a></li>
                                                     @if ($role->is_system)
                                                         <li><hr class="dropdown-divider"></li>
                                                         <li>
@@ -557,6 +528,14 @@
                                             <div class="role-permission-item">
                                                 <div class="role-permission-label">System Settings</div>
                                                 <div class="role-permission-value">{{ $role->can_manage_system_settings ? 'Yes' : 'No' }}</div>
+                                            </div>
+                                            <div class="role-permission-item">
+                                                <div class="role-permission-label">Sidebar Links</div>
+                                                <div class="role-permission-value">{{ count($role->resolvedSidebarPermissions()) }}</div>
+                                            </div>
+                                            <div class="role-permission-item">
+                                                <div class="role-permission-label">Page Permissions</div>
+                                                <div class="role-permission-value">{{ count($role->resolvedPagePermissions()) }}</div>
                                             </div>
                                         </div>
 
@@ -639,6 +618,7 @@
                                 'department' => ['icon' => 'fa-building-user', 'title' => 'Department', 'copy' => 'Limit access to one controlling department.'],
                                 'district' => ['icon' => 'fa-location-dot', 'title' => 'District', 'copy' => 'Limit access to a single district.'],
                                 'division' => ['icon' => 'fa-sitemap', 'title' => 'Division', 'copy' => 'Limit access to every district in one division.'],
+                                'route' => ['icon' => 'fa-route', 'title' => 'Route', 'copy' => 'Limit access to one transport route only.'],
                             ];
 
                             $permissionMeta = [

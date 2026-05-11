@@ -4,6 +4,13 @@
         @method($formMethod)
     @endif
 
+    @php
+        $selectedRouteIds = collect(old('route_ids', $user->exists ? $user->routes->pluck('id')->all() : ($user->route_id ? [$user->route_id] : [])))
+            ->map(fn ($routeId) => (string) $routeId)
+            ->all();
+        $hasAllRoutesSelected = (bool) old('all_routes_access', $user->all_routes_access);
+    @endphp
+
     <div class="row g-3">
         <div class="col-12">
             <label class="form-label fw-semibold" for="name">Name <span class="text-danger">*</span></label>
@@ -22,7 +29,7 @@
             <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
                 <option value="">Select role</option>
                 @foreach ($roles as $role)
-                    <option value="{{ $role->slug }}" @selected(old('role', $user->role) === $role->slug)>{{ $role->name }}</option>
+                    <option value="{{ $role->slug }}" data-access-scope="{{ $role->access_scope }}" @selected(old('role', $user->role) === $role->slug)>{{ $role->name }}</option>
                 @endforeach
             </select>
             @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -48,6 +55,28 @@
                 @endforeach
             </select>
             @error('division_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="col-12 d-none" id="routeFieldWrap">
+            <label class="form-label fw-semibold" for="route_ids">Routes</label>
+            <select class="form-select @error('route_ids') is-invalid @enderror @error('route_ids.*') is-invalid @enderror" id="route_ids" name="route_ids[]" multiple size="6">
+                <option value="all_routes" @selected($hasAllRoutesSelected)>All Routes</option>
+                @foreach ($routes as $route)
+                    <option value="{{ $route->id }}" @selected(in_array((string) $route->id, $selectedRouteIds, true))>{{ $route->route_name }} ({{ $route->starting_point }} to {{ $route->ending_point }})</option>
+                @endforeach
+            </select>
+            <div class="form-text">Select `All Routes` for full access, or hold `Command` on Mac / `Ctrl` on Windows to select multiple routes.</div>
+            @error('route_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            @error('route_ids.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="col-12 d-none" id="allRoutesAccessWrap">
+            <div class="form-check">
+                <input class="form-check-input @error('all_routes_access') is-invalid @enderror" id="all_routes_access" name="all_routes_access" type="checkbox" value="1" @checked(old('all_routes_access', $user->all_routes_access))>
+                <label class="form-check-label fw-semibold" for="all_routes_access">Allow all routes for this user</label>
+            </div>
+            <div class="form-text">Use this only when the role is route-scoped but this specific user should still see all routes.</div>
+            @error('all_routes_access')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
 
         <div class="col-12">
@@ -86,11 +115,62 @@
             const districtField = document.getElementById('district_id');
             const divisionWrap = document.getElementById('divisionFieldWrap');
             const divisionField = document.getElementById('division_id');
+            const routeWrap = document.getElementById('routeFieldWrap');
+            const routeField = document.getElementById('route_ids');
+            const allRoutesAccessWrap = document.getElementById('allRoutesAccessWrap');
+            const allRoutesAccessField = document.getElementById('all_routes_access');
+
+            const syncAllRoutesOption = function () {
+                if (!routeField || !allRoutesAccessField) {
+                    return;
+                }
+
+                const allRoutesOption = Array.from(routeField.options).find(function (option) {
+                    return option.value === 'all_routes';
+                });
+
+                if (!allRoutesOption) {
+                    return;
+                }
+
+                if (allRoutesAccessField.checked) {
+                    Array.from(routeField.options).forEach(function (option) {
+                        option.selected = option.value === 'all_routes';
+                    });
+
+                    return;
+                }
+
+                allRoutesOption.selected = false;
+            };
+
+            const syncAllRoutesCheckboxFromSelect = function () {
+                if (!routeField || !allRoutesAccessField) {
+                    return;
+                }
+
+                const allRoutesSelected = Array.from(routeField.selectedOptions).some(function (option) {
+                    return option.value === 'all_routes';
+                });
+
+                if (allRoutesSelected) {
+                    allRoutesAccessField.checked = true;
+
+                    Array.from(routeField.options).forEach(function (option) {
+                        option.selected = option.value === 'all_routes';
+                    });
+                } else if (allRoutesAccessField.checked) {
+                    allRoutesAccessField.checked = false;
+                }
+            };
 
             const syncScopedFields = function () {
-                const role = roleField ? roleField.value : '';
-                const isDistrictAdmin = role === 'district_admin';
-                const isDivisionalAdmin = role === 'divisional_admin';
+                const selectedOption = roleField ? roleField.options[roleField.selectedIndex] : null;
+                const accessScope = selectedOption ? selectedOption.dataset.accessScope || '' : '';
+                const isDistrictAdmin = accessScope === 'district';
+                const isDivisionalAdmin = accessScope === 'division';
+                const isRouteScoped = accessScope === 'route';
+                const hasAllRoutesAccess = allRoutesAccessField ? allRoutesAccessField.checked : false;
 
                 if (districtWrap) {
                     districtWrap.classList.toggle('d-none', !isDistrictAdmin);
@@ -100,6 +180,14 @@
                     divisionWrap.classList.toggle('d-none', !isDivisionalAdmin);
                 }
 
+                if (routeWrap) {
+                    routeWrap.classList.toggle('d-none', !isRouteScoped);
+                }
+
+                if (allRoutesAccessWrap) {
+                    allRoutesAccessWrap.classList.add('d-none');
+                }
+
                 if (!isDistrictAdmin && districtField) {
                     districtField.value = '';
                 }
@@ -107,12 +195,38 @@
                 if (!isDivisionalAdmin && divisionField) {
                     divisionField.value = '';
                 }
+
+                if (!isRouteScoped && routeField) {
+                    Array.from(routeField.options).forEach(function (option) {
+                        option.selected = false;
+                    });
+                }
+
+                if (!isRouteScoped && allRoutesAccessField) {
+                    allRoutesAccessField.checked = false;
+                }
+
+                if (isRouteScoped) {
+                    syncAllRoutesOption();
+                }
             };
 
             if (roleField) {
                 roleField.addEventListener('change', syncScopedFields);
-                syncScopedFields();
             }
+
+            if (allRoutesAccessField) {
+                allRoutesAccessField.addEventListener('change', syncScopedFields);
+            }
+
+            if (routeField) {
+                routeField.addEventListener('change', function () {
+                    syncAllRoutesCheckboxFromSelect();
+                    syncScopedFields();
+                });
+            }
+
+            syncScopedFields();
 
             document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
                 button.addEventListener('click', function () {

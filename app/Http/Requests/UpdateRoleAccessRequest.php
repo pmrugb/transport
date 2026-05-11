@@ -27,6 +27,10 @@ class UpdateRoleAccessRequest extends FormRequest
             'can_delete' => ['nullable', 'boolean'],
             'can_manage_users' => ['nullable', 'boolean'],
             'can_manage_system_settings' => ['nullable', 'boolean'],
+            'sidebar_permissions' => ['nullable', 'array'],
+            'sidebar_permissions.*' => ['string', Rule::in(Role::sidebarPermissionKeys())],
+            'page_permissions' => ['nullable', 'array'],
+            'page_permissions.*' => ['string', Rule::in(Role::pagePermissionKeys())],
         ];
     }
 
@@ -39,6 +43,8 @@ class UpdateRoleAccessRequest extends FormRequest
             'can_delete' => $this->boolean('can_delete'),
             'can_manage_users' => $this->boolean('can_manage_users'),
             'can_manage_system_settings' => $this->boolean('can_manage_system_settings'),
+            'sidebar_permissions' => array_values(array_filter((array) $this->input('sidebar_permissions', []), 'is_string')),
+            'page_permissions' => array_values(array_filter((array) $this->input('page_permissions', []), 'is_string')),
         ]);
     }
 }

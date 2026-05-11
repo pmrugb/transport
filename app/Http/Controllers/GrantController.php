@@ -13,6 +13,8 @@ class GrantController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanViewGrants();
+
         $perPage = $this->resolvePerPage($request);
         $grantQuery = Grant::query()
             ->with('district')
@@ -29,6 +31,8 @@ class GrantController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanCreateGrants();
+
         return view('grants.create', [
             ...$this->sharedData(),
             'grant' => new Grant(),
@@ -40,6 +44,8 @@ class GrantController extends Controller
 
     public function store(StoreGrantRequest $request): RedirectResponse
     {
+        $this->ensureCanCreateGrants();
+
         Grant::create($request->validated());
 
         return redirect()->route('grants.create')
@@ -48,6 +54,8 @@ class GrantController extends Controller
 
     public function show(Grant $grant): View
     {
+        $this->ensureCanViewGrants();
+
         return view('grants.show', [
             ...$this->sharedData(),
             'grant' => $grant->load(['district', 'releases']),
@@ -56,7 +64,7 @@ class GrantController extends Controller
 
     public function edit(Grant $grant): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageGrants();
 
         return view('grants.edit', [
             ...$this->sharedData(),
@@ -69,7 +77,7 @@ class GrantController extends Controller
 
     public function update(StoreGrantRequest $request, Grant $grant): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageGrants();
 
         $grant->update($request->validated());
 
@@ -79,7 +87,7 @@ class GrantController extends Controller
 
     public function destroy(Grant $grant): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageGrants();
 
         $grant->delete();
 
@@ -100,7 +108,7 @@ class GrantController extends Controller
             'districts' => District::query()->orderBy('name')->get(),
             'financialYearOptions' => $financialYearOptions,
             'statuses' => Grant::STATUSES,
-            'canManageGrants' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageGrants' => auth()->user()?->canManageGrants() ?? false,
             'stats' => [
                 'total' => Grant::count(),
                 'active' => Grant::query()->where('status', 'active')->count(),
@@ -109,8 +117,18 @@ class GrantController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewGrants(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewGrants(), 403);
+    }
+
+    private function ensureCanCreateGrants(): void
+    {
+        abort_unless(auth()->user()?->canCreateGrants(), 403);
+    }
+
+    private function ensureCanManageGrants(): void
+    {
+        abort_unless(auth()->user()?->canManageGrants(), 403);
     }
 }

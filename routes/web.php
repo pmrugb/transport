@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CaptchaSettingsController;
 use App\Http\Controllers\ChallanController;
 use App\Http\Controllers\DashboardController;
@@ -166,5 +167,7 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/settings/roles/{role}', [RoleController::class, 'destroy'])->name('settings.roles.destroy');
     Route::get('/logs/security-logs', [SecurityLogController::class, 'index'])->name('logs.security.index');
     Route::delete('/logs/security-logs/months', [SecurityLogController::class, 'deleteMonthsLogs'])->name('logs.security.delete-months');
+    Route::get('/logs/audit-logs', [AuditLogController::class, 'index'])->name('logs.audit.index');
+    Route::delete('/logs/audit-logs/months', [AuditLogController::class, 'deleteMonthsLogs'])->name('logs.audit.delete-months');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 });

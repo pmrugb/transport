@@ -5,12 +5,14 @@
     @endif
     @php
         $isCreateForm = $formMethod === 'post';
+        $canChangeTripRoute = $canChangeTripRoute ?? false;
+        $canEditTripDriverName = $canEditTripDriverName ?? false;
+        $canEditTripTotalAmount = $canEditTripTotalAmount ?? false;
         $selectedFareId = old('fare_id', $trip->fare_id);
-        $selectedFare = $fares->firstWhere('id', $selectedFareId);
         $initialHalfTrip = old('is_half_trip');
         $isHalfTripChecked = $initialHalfTrip !== null
             ? (bool) $initialHalfTrip
-            : ($selectedFare && (float) ($trip->fare_amount ?? 0) > 0 && abs((float) $trip->fare_amount - ((float) $selectedFare->amount / 2)) < 0.01);
+            : (bool) ($trip->is_half_trip ?? false);
     @endphp
 
     <style>
@@ -69,10 +71,7 @@
             @error('trip_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
-            <div class="d-flex align-items-center justify-content-between gap-2">
-                <label class="form-label fw-semibold mb-0" for="vehicle_id">Vehicle <span class="text-danger">*</span></label>
-                <button class="btn btn-outline-success trip-inline-action" type="button" data-bs-toggle="modal" data-bs-target="#quickVehicleModal">Add Vehicle</button>
-            </div>
+            <label class="form-label fw-semibold" for="vehicle_id">Vehicle <span class="text-danger">*</span></label>
             <select class="form-select @error('vehicle_id') is-invalid @enderror" id="vehicle_id" name="vehicle_id" data-placeholder="Select vehicle" required>
                 <option value="">Select vehicle</option>
                 @foreach ($vehicles as $vehicle)
@@ -98,7 +97,7 @@
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="route_id">Route <span class="text-danger">*</span></label>
-            <select class="form-select @error('route_id') is-invalid @enderror" id="route_id" name="route_id" data-placeholder="Select route" required>
+            <select class="form-select @error('route_id') is-invalid @enderror {{ $canChangeTripRoute ? '' : 'bg-light' }}" id="route_id" name="route_id" data-placeholder="Select route" @disabled(! $canChangeTripRoute) required>
                 <option value="">Select route</option>
                 @foreach ($routes as $route)
                     <option value="{{ $route->id }}" @selected((string) old('route_id', $trip->route_id) === (string) $route->id)>
@@ -148,7 +147,7 @@
 
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="driver_name">Driver Name <span class="text-danger">*</span></label>
-            <input class="form-control @error('driver_name') is-invalid @enderror" id="driver_name" name="driver_name" type="text" placeholder="Enter driver name" value="{{ old('driver_name', $trip->driver_name) }}" required>
+            <input class="form-control @error('driver_name') is-invalid @enderror {{ $canEditTripDriverName ? '' : 'bg-light' }}" id="driver_name" name="driver_name" type="text" placeholder="Enter driver name" value="{{ old('driver_name', $trip->driver_name) }}" @readonly(! $canEditTripDriverName) required>
             @error('driver_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4">
@@ -182,7 +181,7 @@
         </div>
         <div class="col-md-4">
             <label class="form-label fw-semibold" for="total_amount">Total Amount <span class="text-danger">*</span></label>
-            <input class="form-control @error('total_amount') is-invalid @enderror {{ $isCreateForm ? 'bg-light' : '' }}" id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('total_amount', $trip->total_amount) }}" @readonly($isCreateForm) required>
+            <input class="form-control @error('total_amount') is-invalid @enderror {{ ($isCreateForm && ! $canEditTripTotalAmount) || (! $isCreateForm && ! $canEditTripTotalAmount) ? 'bg-light' : '' }}" id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="0.00" value="{{ old('total_amount', $trip->total_amount) }}" @readonly(! $canEditTripTotalAmount) required>
             @error('total_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
@@ -275,73 +274,14 @@
     </div>
 </div>
 
-<div class="modal fade trip-quick-modal" id="quickVehicleModal" tabindex="-1" aria-labelledby="quickVehicleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <form id="quickVehicleForm" action="{{ route('vehicles.store') }}" method="post" novalidate>
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title" id="quickVehicleModalLabel">Add Vehicle</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_vehicle_transporter_id">Transporter</label>
-                            <select class="form-select" id="quick_vehicle_transporter_id" name="transporter_id" required>
-                                <option value="">Select transporter</option>
-                                @foreach ($transporters as $transporter)
-                                    <option value="{{ $transporter->id }}">{{ $transporter->name }}{{ $transporter->cnic ? ' - '.$transporter->cnic : '' }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <input id="quick_vehicle_status" name="status" type="hidden" value="active">
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_vehicle_type">Vehicle Type</label>
-                            <select class="form-select" id="quick_vehicle_type" name="vehicle_type" required>
-                                <option value="">Select vehicle type</option>
-                                @foreach ($vehicleTypes as $vehicleType)
-                                    <option value="{{ $vehicleType->id }}" @selected(strtolower((string) $vehicleType->name) === 'suzuki pick up')>{{ $vehicleType->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_registration_no">Registration No</label>
-                            <input class="form-control" id="quick_registration_no" name="registration_no" type="text" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_chassis_no">Chassis No</label>
-                            <input class="form-control" id="quick_chassis_no" name="chassis_no" type="text">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_vehicle_route_id">Route</label>
-                            <select class="form-select" id="quick_vehicle_route_id" name="route_id" required>
-                                <option value="">Select route</option>
-                                @foreach ($routes as $route)
-                                    <option value="{{ $route->id }}">{{ $route->route_name }} ({{ $route->starting_point }} → {{ $route->ending_point }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" for="quick_vehicle_remarks">Remarks</label>
-                            <textarea class="form-control" id="quick_vehicle_remarks" name="remarks" rows="2"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-success" type="submit">Save Vehicle</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('tripForm');
             const isCreateForm = @json($isCreateForm);
+            const canChangeTripRoute = @json($canChangeTripRoute);
+            const canEditTripDriverName = @json($canEditTripDriverName);
+            const canEditTripTotalAmount = @json($canEditTripTotalAmount);
 
             if (!form) {
                 return;
@@ -369,9 +309,7 @@
             const vehicleDetailsUrl = form.dataset.vehicleDetailsUrl;
             const routeDetailsUrl = form.dataset.routeDetailsUrl;
             const quickTransporterForm = document.getElementById('quickTransporterForm');
-            const quickVehicleForm = document.getElementById('quickVehicleForm');
             const quickTransporterModalElement = document.getElementById('quickTransporterModal');
-            const quickVehicleModalElement = document.getElementById('quickVehicleModal');
             const quickTransporterOwnerTypeField = document.getElementById('quick_owner_type');
             const quickTransporterCnicWrapper = document.getElementById('quickTransporterCnicWrapper');
             const quickTransporterCnicField = document.getElementById('quick_transporter_cnic');
@@ -381,12 +319,11 @@
             const quickTransporterDistrictField = document.getElementById('quick_transporter_district');
             const quickTransporterAddressField = document.getElementById('quick_transporter_address');
             const quickTransporterEasypaisaField = document.getElementById('quick_transporter_easypaisa');
-            const quickVehicleTransporterField = document.getElementById('quick_vehicle_transporter_id');
             const submitButtonDefaultLabel = submitButton ? submitButton.innerHTML : '';
             let baseFareAmount = Number(fareAmountField.value || 0);
             let isSubmitting = false;
 
-            [quickTransporterModalElement, quickVehicleModalElement].forEach(function (modalElement) {
+            [quickTransporterModalElement].forEach(function (modalElement) {
                 if (modalElement && modalElement.parentElement !== document.body) {
                     document.body.appendChild(modalElement);
                 }
@@ -613,8 +550,8 @@
             };
 
             const setAutoFilledFieldState = function () {
-                routeField.disabled = false;
-                routeField.classList.remove('bg-light');
+                routeField.disabled = !canChangeTripRoute;
+                routeField.classList.toggle('bg-light', !canChangeTripRoute);
                 routeHiddenField.disabled = false;
 
                 [
@@ -631,17 +568,19 @@
                 });
 
                 fareAmountField.readOnly = isCreateForm;
-                totalAmountField.readOnly = isCreateForm;
-                driverNameField.readOnly = false;
+                totalAmountField.readOnly = !canEditTripTotalAmount;
+                driverNameField.readOnly = !canEditTripDriverName;
+                driverNameField.classList.toggle('bg-light', !canEditTripDriverName);
                 cnicField.readOnly = isCreateForm;
                 mobileField.readOnly = isCreateForm;
                 noOfTripsField.readOnly = false;
                 noOfTripsField.disabled = false;
                 noOfTripsField.classList.remove('bg-light');
 
-                [cnicField, mobileField, fareAmountField, totalAmountField].forEach(function (field) {
+                [cnicField, mobileField, fareAmountField].forEach(function (field) {
                     field.classList.toggle('bg-light', isCreateForm);
                 });
+                totalAmountField.classList.toggle('bg-light', !canEditTripTotalAmount);
 
                 syncHiddenFields();
             };
@@ -700,12 +639,6 @@
                 document.getElementById('quick_transporter_district'),
             ]);
 
-            initModalSelect2(quickVehicleModalElement, [
-                document.getElementById('quick_vehicle_transporter_id'),
-                document.getElementById('quick_vehicle_type'),
-                document.getElementById('quick_vehicle_route_id'),
-            ]);
-
             const syncFareValues = function () {
                 if (!fareField.value || !baseFareAmount) {
                     return;
@@ -715,8 +648,10 @@
                 const tripCount = Math.max(1, Number(noOfTripsField.value || 1));
 
                 fareAmountField.value = fareAmount.toFixed(2);
-                totalAmountField.value = (fareAmount * tripCount).toFixed(2);
-                totalAmountField.dataset.autoFilled = 'true';
+                if (!canEditTripTotalAmount || totalAmountField.dataset.autoFilled !== 'false') {
+                    totalAmountField.value = (fareAmount * tripCount).toFixed(2);
+                    totalAmountField.dataset.autoFilled = 'true';
+                }
             };
 
             const syncBaseFareFromSelectedFare = function () {
@@ -746,6 +681,9 @@
                         baseFareAmount = Number(data.fare_amount);
                     }
 
+                    if (!canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncFareValues();
                     syncHiddenFields();
                 });
@@ -754,6 +692,7 @@
             const syncFromVehicle = function (options) {
                 const settings = Object.assign({
                     overwriteDriverFields: true,
+                    overwriteTotalAmount: true,
                 }, options || {});
 
                 if (!vehicleField.value || !vehicleDetailsUrl) {
@@ -777,6 +716,9 @@
                         baseFareAmount = Number(data.fare_amount);
                     }
 
+                    if (settings.overwriteTotalAmount || !canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     if (settings.overwriteDriverFields && driverNameField) {
                         driverNameField.value = data.driver_name || '';
                     }
@@ -920,7 +862,6 @@
                             ownerType: operator.owner_type || '',
                             cnic: operator.cnic || '',
                         });
-                        upsertSelectOption(quickVehicleTransporterField, operator.id, optionLabel, true, {});
                         syncTransporterCnicDisplay();
                         updateDriverCnicState(operator.owner_type || '');
                         clearAjaxErrors(quickTransporterForm);
@@ -949,33 +890,19 @@
                 });
             }
 
-            if (quickVehicleForm) {
-                quickVehicleForm.addEventListener('submit', function (event) {
-                    event.preventDefault();
-
-                    submitQuickForm(quickVehicleForm, function (data) {
-                        const vehicle = data.vehicle;
-
-                        upsertSelectOption(vehicleField, vehicle.id, vehicle.registration_no, true, {});
-                        clearAjaxErrors(quickVehicleForm);
-                        quickVehicleForm.reset();
-                        document.getElementById('quick_vehicle_status').value = 'active';
-                        if (window.bootstrap) {
-                            window.bootstrap.Modal.getOrCreateInstance(quickVehicleModalElement).hide();
-                        }
-                        syncFromVehicle();
-                        showAppToast('Success', data.message || 'Vehicle saved successfully.', 'success');
-                    });
-                });
-            }
-
             if (window.jQuery) {
                 window.jQuery(routeField).on('change', function () {
+                    if (canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncFromRoute();
                     validateField(routeField);
                 });
 
                 window.jQuery(vehicleField).on('change', function () {
+                    if (canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncFromVehicle();
                     validateField(vehicleField);
                 });
@@ -987,17 +914,26 @@
                 });
 
                 window.jQuery(fareField).on('change', function () {
+                    if (canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncBaseFareFromSelectedFare();
                     syncFareValues();
                     validateField(fareField);
                 });
             } else {
                 routeField.addEventListener('change', function () {
+                    if (canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncFromRoute();
                     validateField(routeField);
                 });
 
                 vehicleField.addEventListener('change', function () {
+                    if (canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncFromVehicle();
                     validateField(vehicleField);
                 });
@@ -1009,12 +945,18 @@
                 });
 
                 fareField.addEventListener('change', function () {
+                    if (canEditTripTotalAmount) {
+                        totalAmountField.dataset.autoFilled = 'true';
+                    }
                     syncBaseFareFromSelectedFare();
                     syncFareValues();
                     validateField(fareField);
                 });
             }
             halfTripField.addEventListener('change', function () {
+                if (canEditTripTotalAmount) {
+                    totalAmountField.dataset.autoFilled = 'true';
+                }
                 syncFareValues();
             });
             totalAmountField.addEventListener('input', function () {
@@ -1022,10 +964,16 @@
                 validateField(totalAmountField);
             });
             noOfTripsField.addEventListener('input', function () {
+                if (canEditTripTotalAmount) {
+                    totalAmountField.dataset.autoFilled = 'true';
+                }
                 syncFareValues();
                 validateField(noOfTripsField);
             });
             noOfTripsField.addEventListener('change', function () {
+                if (canEditTripTotalAmount) {
+                    totalAmountField.dataset.autoFilled = 'true';
+                }
                 syncFareValues();
                 validateField(noOfTripsField);
             });
@@ -1045,11 +993,16 @@
             if (vehicleField.value) {
                 syncFromVehicle({
                     overwriteDriverFields: isCreateForm,
+                    overwriteTotalAmount: isCreateForm,
                 });
             } else if (routeField.value) {
+                if (!canEditTripTotalAmount || isCreateForm) {
+                    totalAmountField.dataset.autoFilled = 'true';
+                }
                 syncFromRoute();
             }
 
+            totalAmountField.dataset.autoFilled = canEditTripTotalAmount ? 'false' : 'true';
             setAutoFilledFieldState();
             updateDriverCnicState(getSelectedTransporterOwnerType());
             syncBaseFareFromSelectedFare();

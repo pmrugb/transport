@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateUserPasswordRequest;
 use App\Models\District;
 use App\Models\Division;
 use App\Models\Role;
+use App\Models\TransportRoute;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,10 +21,12 @@ class UserController extends Controller
 
         $perPage = $this->resolvePerPage($request);
         $userQuery = User::query()
-            ->select(['id', 'name', 'email', 'role', 'division_id', 'district_id', 'created_at'])
+            ->select(['id', 'name', 'email', 'role', 'division_id', 'district_id', 'route_id', 'all_routes_access', 'created_at'])
             ->with([
                 'district:id,name',
                 'division:id,name',
+                'route:id,route_name,starting_point,ending_point',
+                'routes:id,route_name,starting_point,ending_point',
             ])
             ->latest();
 
@@ -54,7 +57,10 @@ class UserController extends Controller
         $this->ensureSuperadmin();
 
         $payload = $request->validated();
-        User::create($payload);
+        $routeIds = $payload['route_ids'] ?? [];
+        unset($payload['route_ids']);
+        $user = User::create($payload);
+        $user->routes()->sync($routeIds);
 
         return redirect()->route('users.create')
             ->with('success', 'User created successfully.');
@@ -78,12 +84,22 @@ class UserController extends Controller
         $this->ensureSuperadmin();
 
         $payload = $request->validated();
+        $routeIds = $payload['route_ids'] ?? [];
+        unset($payload['route_ids']);
 
         if (blank($payload['password'] ?? null)) {
             unset($payload['password']);
         }
 
         $user->update($payload);
+        $user->routes()->sync($routeIds);
+
+        $redirectTo = $request->input('redirect_to');
+
+        if ($redirectTo === 'index') {
+            return redirect()->route('users.index')
+                ->with('success', 'User updated successfully.');
+        }
 
         return redirect()->route('users.edit', $user)
             ->with('success', 'User updated successfully.');
@@ -119,15 +135,17 @@ class UserController extends Controller
     private function sharedData(): array
     {
         $stats = User::query()
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw("SUM(CASE WHEN role IN ('super_admin', 'admin') THEN 1 ELSE 0 END) as admins")
-            ->selectRaw("SUM(CASE WHEN role IN ('district_admin', 'divisional_admin') THEN 1 ELSE 0 END) as scoped")
+            ->leftJoin('roles', 'roles.slug', '=', 'users.role')
+            ->selectRaw('COUNT(users.id) as total')
+            ->selectRaw("SUM(CASE WHEN roles.can_manage_users = 1 OR users.role IN ('super_admin', 'admin') THEN 1 ELSE 0 END) as admins")
+            ->selectRaw("SUM(CASE WHEN roles.access_scope IN ('district', 'division', 'department', 'route') THEN 1 ELSE 0 END) as scoped")
             ->first();
 
         return [
-            'roles' => Role::query()->select(['id', 'name', 'slug'])->orderBy('name')->get(),
+            'roles' => Role::query()->select(['id', 'name', 'slug', 'access_scope'])->orderBy('name')->get(),
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'divisions' => Division::query()->select(['id', 'name'])->orderBy('name')->get(),
+            'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
             'stats' => [
                 'total' => (int) ($stats?->total ?? 0),
                 'admins' => (int) ($stats?->admins ?? 0),
@@ -138,6 +156,6 @@ class UserController extends Controller
 
     private function ensureSuperadmin(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canManageUsers(), 403);
     }
 }

@@ -12,6 +12,8 @@ class DivisionController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanManageDivisions();
+
         $perPage = $this->resolvePerPage($request);
         $divisionQuery = Division::query()
             ->withCount('districts')
@@ -27,6 +29,8 @@ class DivisionController extends Controller
 
     public function edit(Division $division): View
     {
+        $this->ensureCanManageDivisions();
+
         return view('settings.divisions.edit', [
             'division' => $division,
         ]);
@@ -34,6 +38,8 @@ class DivisionController extends Controller
 
     public function store(StoreDivisionRequest $request): RedirectResponse
     {
+        $this->ensureCanManageDivisions();
+
         Division::create($request->validated());
 
         return redirect()->route('settings.divisions.index')
@@ -42,6 +48,8 @@ class DivisionController extends Controller
 
     public function update(StoreDivisionRequest $request, Division $division): RedirectResponse
     {
+        $this->ensureCanManageDivisions();
+
         $division->update($request->validated());
 
         return redirect()->route('settings.divisions.edit', $division)
@@ -50,9 +58,16 @@ class DivisionController extends Controller
 
     public function destroy(Division $division): RedirectResponse
     {
+        $this->ensureCanManageDivisions();
+
         $division->delete();
 
         return redirect()->route('settings.divisions.index')
             ->with('success', 'Division deleted successfully.');
+    }
+
+    private function ensureCanManageDivisions(): void
+    {
+        abort_unless(auth()->user()?->canManageDivisions(), 403);
     }
 }

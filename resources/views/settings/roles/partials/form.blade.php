@@ -6,7 +6,8 @@
 
     <style>
         .role-scope-card,
-        .role-permission-card {
+        .role-permission-card,
+        .role-access-chip {
             position: relative;
             border: 1px solid #dfe7e1;
             border-radius: 1.1rem;
@@ -23,14 +24,16 @@
         }
 
         .role-scope-input,
-        .role-permission-input {
+        .role-permission-input,
+        .role-access-input {
             position: absolute;
             opacity: 0;
             pointer-events: none;
         }
 
         .role-scope-label,
-        .role-permission-label {
+        .role-permission-label,
+        .role-access-label {
             display: block;
             cursor: pointer;
         }
@@ -135,7 +138,80 @@
         .role-permission-input:checked + .role-permission-label .role-switch::after {
             transform: translateX(1.2rem);
         }
+
+        .role-access-group {
+            border: 1px solid #e4ece6;
+            border-radius: 1.25rem;
+            background: #fff;
+            padding: 1rem;
+            height: 100%;
+        }
+
+        .role-access-group-title {
+            color: #2b443a;
+            font-size: 0.95rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+        }
+
+        .role-access-group-copy {
+            color: #6b7a8f;
+            font-size: 0.76rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .role-access-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .role-access-chip {
+            min-height: 45px;
+            padding: 0.7rem 0.9rem 0.7rem 2.8rem;
+        }
+
+        .role-access-check {
+            position: absolute;
+            left: 0.95rem;
+            top: 0.8rem;
+            width: 1.1rem;
+            height: 1.1rem;
+            border-radius: 0.35rem;
+            border: 1.5px solid #c8d4df;
+            background: #fff;
+        }
+
+        .role-access-input:checked + .role-access-label .role-access-chip {
+            border-color: #bcdac7;
+            background: linear-gradient(180deg, #fcfffd 0%, #f2faf5 100%);
+            box-shadow: inset 0 0 0 1px rgba(75, 149, 102, 0.14);
+        }
+
+        .role-access-input:checked + .role-access-label .role-access-check {
+            border-color: #4b9566;
+            background: #4b9566;
+            box-shadow: inset 0 0 0 3px #fff;
+        }
+
+        .role-access-title {
+            color: #2b443a;
+            font-size: 0.84rem;
+            font-weight: 800;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 767.98px) {
+            .role-access-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
+
+    @php
+        $selectedSidebarPermissions = old('sidebar_permissions', $role->resolvedSidebarPermissions());
+        $selectedPagePermissions = old('page_permissions', $role->resolvedPagePermissions());
+    @endphp
 
     <div class="row g-3">
         <div class="col-md-4">
@@ -163,6 +239,7 @@
                         'department' => ['icon' => 'fa-building-user', 'title' => 'Department', 'copy' => 'Limit access to any department.'],
                         'district' => ['icon' => 'fa-location-dot', 'title' => 'District', 'copy' => 'Limit access to a single district.'],
                         'division' => ['icon' => 'fa-sitemap', 'title' => 'Division', 'copy' => 'Limit access to every district in one division.'],
+                        'route' => ['icon' => 'fa-route', 'title' => 'Route', 'copy' => 'Limit access to a single transport route.'],
                     ];
                 @endphp
                 @foreach ($accessScopes as $value => $label)
@@ -208,6 +285,70 @@
                     </div>
                 @endforeach
             </div>
+        </div>
+
+        <div class="col-12 pt-2">
+            <div class="d-flex flex-column gap-1 mb-2">
+                <h4 class="section-title mb-0">Sidebar Navigation</h4>
+                <p class="section-copy mb-0">Choose which menu groups and subnav sections appear for users with this role.</p>
+            </div>
+            <div class="row g-3">
+                @foreach ($sidebarGroups as $groupTitle => $items)
+                    <div class="col-12 col-xl-6">
+                        <div class="role-access-group">
+                            <div class="role-access-group-title">{{ $groupTitle }}</div>
+                            <p class="role-access-group-copy">These links will appear in the main sidebar for this role.</p>
+                            <div class="role-access-grid">
+                                @foreach ($items as $key => $meta)
+                                    <div>
+                                        <input class="role-access-input" type="checkbox" name="sidebar_permissions[]" id="sidebar_permission_{{ str_replace(['.', '-'], '_', $key) }}" value="{{ $key }}" @checked(in_array($key, $selectedSidebarPermissions, true))>
+                                        <label class="role-access-label" for="sidebar_permission_{{ str_replace(['.', '-'], '_', $key) }}">
+                                            <div class="role-access-chip">
+                                                <span class="role-access-check"></span>
+                                                <div class="role-access-title">{{ $meta['label'] }}</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @error('sidebar_permissions')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+            @error('sidebar_permissions.*')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="col-12 pt-2">
+            <div class="d-flex flex-column gap-1 mb-2">
+                <h4 class="section-title mb-0">Page Access</h4>
+                <p class="section-copy mb-0">These permissions decide which pages and actions the role can actually open.</p>
+            </div>
+            <div class="row g-3">
+                @foreach ($pagePermissionGroups as $groupTitle => $items)
+                    <div class="col-12 col-xl-6">
+                        <div class="role-access-group">
+                            <div class="role-access-group-title">{{ $groupTitle }}</div>
+                            <p class="role-access-group-copy">Toggle the actions this role should be able to perform.</p>
+                            <div class="role-access-grid">
+                                @foreach ($items as $key => $meta)
+                                    <div>
+                                        <input class="role-access-input" type="checkbox" name="page_permissions[]" id="page_permission_{{ str_replace(['.', '-'], '_', $key) }}" value="{{ $key }}" @checked(in_array($key, $selectedPagePermissions, true))>
+                                        <label class="role-access-label" for="page_permission_{{ str_replace(['.', '-'], '_', $key) }}">
+                                            <div class="role-access-chip">
+                                                <span class="role-access-check"></span>
+                                                <div class="role-access-title">{{ $meta['label'] }}</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @error('page_permissions')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+            @error('page_permissions.*')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
         </div>
 
         <div class="col-md-4">

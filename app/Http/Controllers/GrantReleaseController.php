@@ -14,6 +14,8 @@ class GrantReleaseController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanViewGrantReleases();
+
         $perPage = $this->resolvePerPage($request);
         $grantReleaseQuery = GrantRelease::query()
             ->with('grant')
@@ -30,6 +32,8 @@ class GrantReleaseController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanCreateGrantReleases();
+
         return view('grant-releases.create', [
             ...$this->sharedData(),
             'grantRelease' => new GrantRelease(),
@@ -41,6 +45,8 @@ class GrantReleaseController extends Controller
 
     public function store(StoreGrantReleaseRequest $request): RedirectResponse
     {
+        $this->ensureCanCreateGrantReleases();
+
         GrantRelease::create($request->validated());
 
         return redirect()->route('grant-releases.create')
@@ -49,6 +55,8 @@ class GrantReleaseController extends Controller
 
     public function show(GrantRelease $grantRelease): View
     {
+        $this->ensureCanViewGrantReleases();
+
         return view('grant-releases.show', [
             ...$this->sharedData(),
             'grantRelease' => $grantRelease->load('grant'),
@@ -57,7 +65,7 @@ class GrantReleaseController extends Controller
 
     public function edit(GrantRelease $grantRelease): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageGrantReleases();
 
         return view('grant-releases.edit', [
             ...$this->sharedData(),
@@ -70,7 +78,7 @@ class GrantReleaseController extends Controller
 
     public function update(StoreGrantReleaseRequest $request, GrantRelease $grantRelease): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageGrantReleases();
 
         $grantRelease->update($request->validated());
 
@@ -80,7 +88,7 @@ class GrantReleaseController extends Controller
 
     public function destroy(GrantRelease $grantRelease): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageGrantReleases();
 
         $grantRelease->delete();
 
@@ -93,7 +101,7 @@ class GrantReleaseController extends Controller
         return [
             'grants' => Grant::query()->orderBy('title')->get(),
             'departments' => Department::query()->where('status', 'active')->orderBy('name')->get(),
-            'canManageGrantReleases' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageGrantReleases' => auth()->user()?->canManageGrantReleases() ?? false,
             'stats' => [
                 'total' => GrantRelease::count(),
                 'grants' => GrantRelease::query()->distinct('grant_id')->count('grant_id'),
@@ -102,8 +110,18 @@ class GrantReleaseController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewGrantReleases(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewGrantReleases(), 403);
+    }
+
+    private function ensureCanCreateGrantReleases(): void
+    {
+        abort_unless(auth()->user()?->canCreateGrantReleases(), 403);
+    }
+
+    private function ensureCanManageGrantReleases(): void
+    {
+        abort_unless(auth()->user()?->canManageGrantReleases(), 403);
     }
 }

@@ -12,6 +12,8 @@ class DepartmentController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanManageDepartments();
+
         $perPage = $this->resolvePerPage($request);
         $departmentQuery = Department::query()
             ->latest();
@@ -27,6 +29,8 @@ class DepartmentController extends Controller
 
     public function edit(Department $department): View
     {
+        $this->ensureCanManageDepartments();
+
         return view('settings.departments.edit', [
             'department' => $department,
             'statuses' => Department::STATUSES,
@@ -35,6 +39,8 @@ class DepartmentController extends Controller
 
     public function store(StoreDepartmentRequest $request): RedirectResponse
     {
+        $this->ensureCanManageDepartments();
+
         Department::create($request->validated());
 
         return redirect()->route('settings.departments.index')
@@ -43,6 +49,8 @@ class DepartmentController extends Controller
 
     public function update(StoreDepartmentRequest $request, Department $department): RedirectResponse
     {
+        $this->ensureCanManageDepartments();
+
         $department->update($request->validated());
 
         return redirect()->route('settings.departments.edit', $department)
@@ -51,9 +59,16 @@ class DepartmentController extends Controller
 
     public function destroy(Department $department): RedirectResponse
     {
+        $this->ensureCanManageDepartments();
+
         $department->delete();
 
         return redirect()->route('settings.departments.index')
             ->with('success', 'Department deleted successfully.');
+    }
+
+    private function ensureCanManageDepartments(): void
+    {
+        abort_unless(auth()->user()?->canManageDepartments(), 403);
     }
 }

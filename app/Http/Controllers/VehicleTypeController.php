@@ -12,6 +12,8 @@ class VehicleTypeController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanManageVehicleTypes();
+
         $perPage = $this->resolvePerPage($request);
         $vehicleTypeQuery = VehicleType::query()->latest();
 
@@ -26,6 +28,8 @@ class VehicleTypeController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanManageVehicleTypes();
+
         return view('settings.vehicle-types.index', [
             ...$this->sharedData(),
             'perPage' => 10,
@@ -38,7 +42,7 @@ class VehicleTypeController extends Controller
 
     public function show(VehicleType $vehicleType): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicleTypes();
 
         return view('vehicles.show', [
             ...$this->sharedData(),
@@ -48,7 +52,7 @@ class VehicleTypeController extends Controller
 
     public function edit(VehicleType $vehicleType): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicleTypes();
 
         return view('settings.vehicle-types.edit', [
             ...$this->sharedData(),
@@ -58,6 +62,8 @@ class VehicleTypeController extends Controller
 
     public function store(StoreVehicleTypeRequest $request): RedirectResponse
     {
+        $this->ensureCanManageVehicleTypes();
+
         VehicleType::create([
             ...$request->validated(),
             'status' => 'active',
@@ -69,7 +75,7 @@ class VehicleTypeController extends Controller
 
     public function update(StoreVehicleTypeRequest $request, VehicleType $vehicleType): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicleTypes();
 
         $vehicleType->update($request->validated());
 
@@ -79,7 +85,7 @@ class VehicleTypeController extends Controller
 
     public function destroy(VehicleType $vehicleType): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicleTypes();
 
         $vehicleType->delete();
 
@@ -91,12 +97,12 @@ class VehicleTypeController extends Controller
     {
         return [
             'statuses' => VehicleType::STATUSES,
-            'canManageVehicles' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageVehicles' => auth()->user()?->canManageVehicleTypes() ?? false,
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanManageVehicleTypes(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canManageVehicleTypes(), 403);
     }
 }

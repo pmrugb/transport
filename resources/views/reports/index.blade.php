@@ -206,8 +206,20 @@
                         </div>
                         <div class="report-results-summary">
                             <div class="report-results-pill">
-                                <span class="report-results-pill-label">Total Trips</span>
+                                <span class="report-results-pill-label">Trips</span>
                                 <span class="report-results-pill-value">{{ number_format((int) $stats['trips']) }}</span>
+                            </div>
+                            <div class="report-results-pill">
+                                <span class="report-results-pill-label">Half Trips</span>
+                                <span class="report-results-pill-value">{{ number_format((int) $stats['half_trips']) }}</span>
+                            </div>
+                            <div class="report-results-pill">
+                                <span class="report-results-pill-label">Total Trips</span>
+                                <span class="report-results-pill-value">{{ fmod((float) $stats['total_trips'], 1.0) === 0.0 ? number_format((float) $stats['total_trips'], 0) : number_format((float) $stats['total_trips'], 1) }}</span>
+                            </div>
+                            <div class="report-results-pill">
+                                <span class="report-results-pill-label">Total Vehicles</span>
+                                <span class="report-results-pill-value">{{ number_format((int) $stats['vehicles']) }}</span>
                             </div>
                             <div class="report-results-pill">
                                 <span class="report-results-pill-label">Total Amount</span>
@@ -248,11 +260,25 @@
                                         <td class="text-nowrap">{{ $report->calculation_date?->format('Y-m-d') ?: 'N/A' }}</td>
                                         <td>{{ $statuses[$report->status] ?? ucfirst($report->status) }}</td>
                                         <td>{{ $districtLabel }}</td>
-                                        <td>{{ $route?->route_name ?: 'N/A' }}</td>
+                                        <td>
+                                            @if ($route)
+                                                {{ $route->route_name }}
+                                                @if ($route->starting_point || $route->ending_point)
+                                                    <br><span class="text-muted small">{{ $route->starting_point ?: 'N/A' }} → {{ $route->ending_point ?: 'N/A' }}</span>
+                                                @endif
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
                                         <td>{{ $report->transporter?->name ?: 'N/A' }}</td>
                                         <td>{{ $report->vehicle?->registration_no ?: 'N/A' }}</td>
                                         <td>{{ $trip?->driver_name ?: 'N/A' }}<br><span class="text-muted small">{{ $trip?->driver_mobile ?: 'N/A' }}</span></td>
-                                        <td>{{ $report->no_of_trips }}</td>
+                                        <td>
+                                            {{ $report->no_of_trips }}
+                                            @if ($trip?->is_half_trip)
+                                                <br><span class="text-muted small">Half trip</span>
+                                            @endif
+                                        </td>
                                         <td>{{ number_format((float) $report->fare_amount, 2) }}</td>
                                         <td>{{ number_format((float) $report->total_amount, 2) }}</td>
                                     </tr>

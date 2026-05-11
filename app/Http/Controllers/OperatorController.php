@@ -19,6 +19,8 @@ class OperatorController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureCanViewTransporters();
+
         $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
         $operatorQuery = $this->filteredOperatorsQuery($request);
@@ -38,6 +40,8 @@ class OperatorController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
+        $this->ensureCanViewTransporters();
+
         $columns = $this->selectedOperatorExportColumns($request);
         $filename = 'transporters-'.now()->format('Ymd-His').'.csv';
 
@@ -60,6 +64,8 @@ class OperatorController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
+        $this->ensureCanViewTransporters();
+
         $columns = $this->selectedOperatorExportColumns($request);
         $rows = $this->filteredOperatorsQuery($request)
             ->get()
@@ -80,6 +86,8 @@ class OperatorController extends Controller
 
     public function pdfView(Request $request): View
     {
+        $this->ensureCanViewTransporters();
+
         $columns = $this->selectedOperatorExportColumns($request);
         $rows = $this->filteredOperatorsQuery($request)
             ->get()
@@ -100,6 +108,8 @@ class OperatorController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanCreateTransporters();
+
         return view('operators.create', [
             ...$this->sharedData(),
             'operator' => new Operator(),
@@ -111,6 +121,8 @@ class OperatorController extends Controller
 
     public function store(StoreOperatorRequest $request): RedirectResponse|JsonResponse
     {
+        $this->ensureCanCreateTransporters();
+
         $operator = Operator::create($request->validated())->load('district');
 
         if ($request->expectsJson()) {
@@ -134,6 +146,8 @@ class OperatorController extends Controller
 
     public function show(Operator $operator): View
     {
+        $this->ensureCanViewTransporters();
+
         return view('operators.show', [
             ...$this->sharedData(),
             'operator' => $operator->load('district'),
@@ -142,7 +156,7 @@ class OperatorController extends Controller
 
     public function edit(Operator $operator): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageTransporters();
 
         return view('operators.edit', [
             ...$this->sharedData(),
@@ -155,7 +169,7 @@ class OperatorController extends Controller
 
     public function update(StoreOperatorRequest $request, Operator $operator): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageTransporters();
 
         $operator->update($request->validated());
 
@@ -165,7 +179,7 @@ class OperatorController extends Controller
 
     public function destroy(Operator $operator): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageTransporters();
 
         $linkedVehicles = $operator->vehicles()
             ->select(['id', 'registration_no'])
@@ -211,7 +225,7 @@ class OperatorController extends Controller
         return [
             'ownerTypes' => Operator::OWNER_TYPES,
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
-            'canManageTransporters' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageTransporters' => auth()->user()?->canManageTransporters() ?? false,
             'stats' => [
                 'companies' => (int) ($stats?->companies ?? 0),
                 'private' => (int) ($stats?->private ?? 0),
@@ -219,11 +233,6 @@ class OperatorController extends Controller
                 'total' => (int) ($stats?->total ?? 0),
             ],
         ];
-    }
-
-    private function ensureSuperadmin(): void
-    {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
     }
 
     private function filteredOperatorsQuery(Request $request)
@@ -313,5 +322,20 @@ class OperatorController extends Controller
         }
 
         return $exportRow;
+    }
+
+    private function ensureCanViewTransporters(): void
+    {
+        abort_unless(auth()->user()?->canViewTransporters(), 403);
+    }
+
+    private function ensureCanCreateTransporters(): void
+    {
+        abort_unless(auth()->user()?->canCreateTransporters(), 403);
+    }
+
+    private function ensureCanManageTransporters(): void
+    {
+        abort_unless(auth()->user()?->canManageTransporters(), 403);
     }
 }

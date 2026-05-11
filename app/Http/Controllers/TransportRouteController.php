@@ -55,6 +55,8 @@ class TransportRouteController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureCanViewRoutes();
+
         $perPage = $this->resolvePerPage($request);
         $routeQuery = TransportRoute::query()
             ->select([
@@ -82,6 +84,8 @@ class TransportRouteController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanCreateRoutes();
+
         return view('routes.create', [
             ...$this->sharedData(),
             'transportRoute' => new TransportRoute(),
@@ -94,6 +98,8 @@ class TransportRouteController extends Controller
 
     public function store(StoreTransportRouteRequest $request): RedirectResponse
     {
+        $this->ensureCanCreateRoutes();
+
         $payload = $request->validated();
         $payload['route_code'] = $this->generateRouteCode((int) $payload['district_id']);
 
@@ -105,6 +111,8 @@ class TransportRouteController extends Controller
 
     public function show(TransportRoute $transportRoute): View
     {
+        $this->ensureCanViewRoutes();
+
         return view('routes.show', [
             ...$this->sharedData(),
             'transportRoute' => $transportRoute->load('district'),
@@ -113,7 +121,7 @@ class TransportRouteController extends Controller
 
     public function edit(TransportRoute $transportRoute): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageRoutes();
 
         return view('routes.edit', [
             ...$this->sharedData(),
@@ -127,7 +135,7 @@ class TransportRouteController extends Controller
 
     public function update(StoreTransportRouteRequest $request, TransportRoute $transportRoute): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageRoutes();
 
         $payload = $request->validated();
 
@@ -143,7 +151,7 @@ class TransportRouteController extends Controller
 
     public function destroy(TransportRoute $transportRoute): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageRoutes();
 
         $transportRoute->delete();
 
@@ -161,7 +169,7 @@ class TransportRouteController extends Controller
         return [
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'hourOptions' => self::HOUR_OPTIONS,
-            'canManageRoutes' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageRoutes' => auth()->user()?->canManageRoutes() ?? false,
             'stats' => [
                 'total' => (int) ($stats?->total ?? 0),
                 'districts' => (int) ($stats?->districts ?? 0),
@@ -169,9 +177,19 @@ class TransportRouteController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewRoutes(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewRoutes(), 403);
+    }
+
+    private function ensureCanCreateRoutes(): void
+    {
+        abort_unless(auth()->user()?->canCreateRoutes(), 403);
+    }
+
+    private function ensureCanManageRoutes(): void
+    {
+        abort_unless(auth()->user()?->canManageRoutes(), 403);
     }
 
     /**

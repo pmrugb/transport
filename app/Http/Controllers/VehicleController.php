@@ -21,6 +21,8 @@ class VehicleController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureCanViewVehicles();
+
         $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
         $vehicleQuery = $this->filteredVehiclesQuery($request);
@@ -40,6 +42,8 @@ class VehicleController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
+        $this->ensureCanViewVehicles();
+
         $columns = $this->selectedVehicleExportColumns($request);
         $filename = 'vehicles-'.now()->format('Ymd-His').'.csv';
 
@@ -62,6 +66,8 @@ class VehicleController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
+        $this->ensureCanViewVehicles();
+
         $columns = $this->selectedVehicleExportColumns($request);
         $rows = $this->filteredVehiclesQuery($request)
             ->get()
@@ -82,6 +88,8 @@ class VehicleController extends Controller
 
     public function pdfView(Request $request): View
     {
+        $this->ensureCanViewVehicles();
+
         $columns = $this->selectedVehicleExportColumns($request);
         $filters = $this->filterValues($request);
         $rows = $this->filteredVehiclesQuery($request)
@@ -115,6 +123,8 @@ class VehicleController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanCreateVehicles();
+
         return view('vehicles.create', [
             ...$this->sharedData(),
             'vehicle' => new Vehicle(),
@@ -126,6 +136,8 @@ class VehicleController extends Controller
 
     public function store(StoreVehicleRequest $request): RedirectResponse|JsonResponse
     {
+        $this->ensureCanCreateVehicles();
+
         $vehicle = Vehicle::create($request->validated())->load(['transporter:id,name', 'route:id,route_name,starting_point,ending_point']);
 
         if ($request->expectsJson()) {
@@ -150,6 +162,9 @@ class VehicleController extends Controller
 
     public function show(Vehicle $vehicle): View
     {
+        $this->ensureCanViewVehicles();
+        $this->ensureVehicleWithinScope($vehicle);
+
         return view('vehicles.show', [
             ...$this->sharedData(),
             'vehicle' => $vehicle->load(['transporter', 'vehicleType', 'route']),
@@ -158,7 +173,8 @@ class VehicleController extends Controller
 
     public function edit(Vehicle $vehicle): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicles();
+        $this->ensureVehicleWithinScope($vehicle);
 
         return view('vehicles.edit', [
             ...$this->sharedData(),
@@ -171,7 +187,8 @@ class VehicleController extends Controller
 
     public function update(StoreVehicleRequest $request, Vehicle $vehicle): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicles();
+        $this->ensureVehicleWithinScope($vehicle);
 
         $vehicle->update($request->validated());
 
@@ -181,7 +198,8 @@ class VehicleController extends Controller
 
     public function destroy(Vehicle $vehicle): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageVehicles();
+        $this->ensureVehicleWithinScope($vehicle);
 
         $vehicle->delete();
 
@@ -191,23 +209,44 @@ class VehicleController extends Controller
 
     private function sharedData(): array
     {
+        $user = auth()->user();
+        $routesQuery = TransportRoute::query()
+            ->select(['id', 'route_name', 'starting_point', 'ending_point'])
+            ->orderBy('route_name');
+        $scopedRouteIds = $user?->scopedRouteIds();
+
+        if ($scopedRouteIds !== null) {
+            $routesQuery->whereIn('id', $scopedRouteIds);
+        }
+
         return [
             'transporters' => Operator::query()->select(['id', 'name', 'cnic'])->orderBy('name')->get(),
             'vehicleTypes' => VehicleType::query()->select(['id', 'name'])->orderBy('name')->get(),
-            'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
+            'routes' => $routesQuery->get(),
             'statuses' => Vehicle::STATUSES,
-            'canManageVehicles' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageVehicles' => auth()->user()?->canManageVehicles() ?? false,
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewVehicles(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewVehicles(), 403);
+    }
+
+    private function ensureCanCreateVehicles(): void
+    {
+        abort_unless(auth()->user()?->canCreateVehicles(), 403);
+    }
+
+    private function ensureCanManageVehicles(): void
+    {
+        abort_unless(auth()->user()?->canManageVehicles(), 403);
     }
 
     private function filteredVehiclesQuery(Request $request)
     {
         $filters = $this->filterValues($request);
+        $scopedRouteIds = $request->user()?->scopedRouteIds();
 
         return Vehicle::query()
             ->select(['id', 'transporter_id', 'vehicle_type', 'registration_no', 'chassis_no', 'route_id', 'status', 'remarks', 'created_at'])
@@ -231,9 +270,21 @@ class VehicleController extends Controller
             })
             ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
             ->when($filters['vehicle_type'], fn ($query, $vehicleType) => $query->where('vehicle_type', $vehicleType))
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds))
             ->when($filters['route_id'], fn ($query, $routeId) => $query->where('route_id', $routeId))
             ->when($filters['status'], fn ($query, $status) => $query->where('status', $status))
             ->latest();
+    }
+
+    private function ensureVehicleWithinScope(Vehicle $vehicle): void
+    {
+        $scopedRouteIds = auth()->user()?->scopedRouteIds();
+
+        if ($scopedRouteIds === null) {
+            return;
+        }
+
+        abort_unless(in_array((int) $vehicle->route_id, $scopedRouteIds, true), 403);
     }
 
     private function filterValues(Request $request): array

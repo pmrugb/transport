@@ -16,12 +16,16 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
+        abort_unless($request->user()?->canAccessSidebar('dashboard'), 403);
+
         $perPage = $this->resolvePerPage($request);
         $user = $request->user();
         $isNatcoDashboard = $user?->isNatcoDepartmentUser() ?? false;
+        $scopedRouteIds = $user?->scopedRouteIds();
 
         if ($isNatcoDashboard) {
-            $paymentQuery = TripCost::query();
+            $paymentQuery = TripCost::query()
+                ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds));
             $routePaymentSummary = TransportRoute::query()
                 ->select([
                     'transport_routes.id',
@@ -37,6 +41,7 @@ class DashboardController extends Controller
                 ->selectRaw("COALESCE(SUM(CASE WHEN trip_costs.status IN ('due', 'on_hold') THEN trip_costs.total_amount ELSE 0 END), 0) as unpaid_amount")
                 ->leftJoin('trip_costs', 'trip_costs.route_id', '=', 'transport_routes.id')
                 ->with('district:id,name')
+                ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('transport_routes.id', $scopedRouteIds))
                 ->groupBy(
                     'transport_routes.id',
                     'transport_routes.route_name',
@@ -136,6 +141,7 @@ class DashboardController extends Controller
                 'district:id,name',
                 'tripCost:id,trip_id',
             ])
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds))
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
@@ -143,18 +149,23 @@ class DashboardController extends Controller
         $routeSnapshot = TransportRoute::query()
             ->select(['id', 'route_name', 'starting_point', 'ending_point', 'timing', 'total_distance', 'district_id', 'created_at'])
             ->with(['district:id,name'])
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('id', $scopedRouteIds))
             ->latest()
             ->take(3)
             ->get();
 
         $ownerTypeChart = Operator::query()
             ->select('owner_type', DB::raw('count(*) as aggregate'))
+            ->when($scopedRouteIds !== null, function ($query) use ($scopedRouteIds) {
+                $query->whereHas('vehicles', fn ($vehicleQuery) => $vehicleQuery->whereIn('route_id', $scopedRouteIds));
+            })
             ->groupBy('owner_type')
             ->pluck('aggregate', 'owner_type');
 
         $routesByDistrict = TransportRoute::query()
             ->leftJoin('districts', 'districts.id', '=', 'transport_routes.district_id')
             ->selectRaw('districts.name as district_name, count(transport_routes.id) as aggregate')
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('transport_routes.id', $scopedRouteIds))
             ->groupBy('districts.name')
             ->orderByDesc('aggregate')
             ->limit(6)
@@ -162,6 +173,9 @@ class DashboardController extends Controller
 
         $monthlyOperators = Operator::query()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month_key, count(*) as aggregate")
+            ->when($scopedRouteIds !== null, function ($query) use ($scopedRouteIds) {
+                $query->whereHas('vehicles', fn ($vehicleQuery) => $vehicleQuery->whereIn('route_id', $scopedRouteIds));
+            })
             ->whereDate('created_at', '>=', now()->startOfMonth()->subMonths(5))
             ->groupBy('month_key')
             ->orderBy('month_key')
@@ -174,6 +188,9 @@ class DashboardController extends Controller
             ->selectRaw('COUNT(*) as total')
             ->selectRaw("SUM(CASE WHEN owner_type = 'company' THEN 1 ELSE 0 END) as companies")
             ->selectRaw('COUNT(DISTINCT district_id) as districts')
+            ->when($scopedRouteIds !== null, function ($query) use ($scopedRouteIds) {
+                $query->whereHas('vehicles', fn ($vehicleQuery) => $vehicleQuery->whereIn('route_id', $scopedRouteIds));
+            })
             ->first();
 
         return view('dashboard', [
@@ -184,7 +201,9 @@ class DashboardController extends Controller
             'tripStatuses' => TripDetail::STATUSES,
             'stats' => [
                 'totalOperators' => (int) ($operatorStats?->total ?? 0),
-                'totalRoutes' => TransportRoute::count(),
+                'totalRoutes' => $scopedRouteIds !== null
+                    ? TransportRoute::query()->whereIn('id', $scopedRouteIds)->count()
+                    : TransportRoute::count(),
                 'activeCompanies' => (int) ($operatorStats?->companies ?? 0),
                 'pendingChecks' => (int) ($operatorStats?->districts ?? 0),
             ],

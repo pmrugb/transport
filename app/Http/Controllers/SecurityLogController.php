@@ -12,7 +12,7 @@ class SecurityLogController extends Controller
 {
     public function index(Request $request): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewSecurityLogs();
 
         $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
@@ -35,7 +35,7 @@ class SecurityLogController extends Controller
 
     public function deleteMonthsLogs(Request $request): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewSecurityLogs();
 
         $deleted = SecurityLog::query()
             ->where('created_at', '<', now()->startOfMonth())
@@ -70,8 +70,8 @@ class SecurityLogController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewSecurityLogs(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewSecurityLogs(), 403);
     }
 }

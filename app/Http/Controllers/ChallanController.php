@@ -17,7 +17,7 @@ class ChallanController extends Controller
 {
     public function routeDetails(Request $request): JsonResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageChallans();
 
         $route = TransportRoute::query()
             ->findOrFail((int) $request->integer('route_id'));
@@ -50,7 +50,7 @@ class ChallanController extends Controller
 
     public function create(): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanCreateChallans();
 
         return view('challans.create', [
             ...$this->sharedData(),
@@ -65,7 +65,7 @@ class ChallanController extends Controller
 
     public function store(StoreChallanRequest $request): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanCreateChallans();
 
         $payload = $request->validated();
         $payload = $this->hydrateRouteSnapshot($payload);
@@ -106,7 +106,7 @@ class ChallanController extends Controller
 
     public function edit(Challan $challan): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageChallans();
 
         return view('challans.edit', [
             ...$this->sharedData(),
@@ -119,7 +119,7 @@ class ChallanController extends Controller
 
     public function update(StoreChallanRequest $request, Challan $challan): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageChallans();
 
         $payload = $request->validated();
         $payload = $this->hydrateRouteSnapshot($payload);
@@ -133,7 +133,7 @@ class ChallanController extends Controller
 
     public function destroy(Challan $challan): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageChallans();
 
         $challan->delete();
 
@@ -151,8 +151,8 @@ class ChallanController extends Controller
         return [
             'routes' => $routes,
             'districts' => District::query()->orderBy('name')->get(),
-            'canViewChallans' => $this->canViewChallans(),
-            'canManageChallans' => auth()->user()?->isSuperadmin() ?? false,
+            'canViewChallans' => auth()->user()?->canViewChallans() ?? false,
+            'canManageChallans' => auth()->user()?->canManageChallans() ?? false,
             'stats' => [
                 'total' => Challan::count(),
                 'today' => Challan::query()->whereDate('challan_date', today())->count(),
@@ -161,9 +161,14 @@ class ChallanController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanCreateChallans(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canCreateChallans(), 403);
+    }
+
+    private function ensureCanManageChallans(): void
+    {
+        abort_unless(auth()->user()?->canManageChallans(), 403);
     }
 
     private function ensureCanViewChallans(): void
@@ -173,9 +178,7 @@ class ChallanController extends Controller
 
     private function canViewChallans(): bool
     {
-        $user = auth()->user();
-
-        return ($user?->isSuperadmin() ?? false) || ($user?->isNatcoDepartmentUser() ?? false);
+        return auth()->user()?->canViewChallans() ?? false;
     }
 
     private function hydrateRouteSnapshot(array $payload): array

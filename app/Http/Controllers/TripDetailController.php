@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsExcelExports;
 use App\Http\Requests\StoreTripDetailRequest;
+use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\District;
 use App\Models\Fare;
@@ -29,6 +30,8 @@ class TripDetailController extends Controller
 
     public function vehicleDetails(Request $request): JsonResponse
     {
+        $this->ensureCanCreateTrips();
+
         $vehicle = Vehicle::query()
             ->select(['id', 'route_id', 'transporter_id'])
             ->with([
@@ -36,6 +39,7 @@ class TripDetailController extends Controller
                 'transporter:id,name,owner_type,cnic,phone',
             ])
             ->findOrFail((int) $request->integer('vehicle_id'));
+        $this->ensureVehicleWithinScope($vehicle);
 
         $fare = Fare::query()
             ->where('status', 'active')
@@ -58,6 +62,8 @@ class TripDetailController extends Controller
 
     public function routeDetails(Request $request): JsonResponse
     {
+        $this->ensureCanCreateTrips();
+
         $route = TransportRoute::query()
             ->select(['id', 'district_id'])
             ->findOrFail((int) $request->integer('route_id'));
@@ -77,6 +83,8 @@ class TripDetailController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureCanViewTrips();
+
         $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
         $tripQuery = $this->filteredTripsQuery($request);
@@ -96,6 +104,8 @@ class TripDetailController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
+        $this->ensureCanViewTrips();
+
         $columns = $this->selectedTripExportColumns($request);
         $filename = 'trips-'.now()->format('Ymd-His').'.csv';
 
@@ -116,6 +126,8 @@ class TripDetailController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
+        $this->ensureCanViewTrips();
+
         $columns = $this->selectedTripExportColumns($request);
         $rows = $this->filteredTripsQuery($request)
             ->get()
@@ -135,6 +147,8 @@ class TripDetailController extends Controller
 
     public function pdfView(Request $request): View
     {
+        $this->ensureCanViewTrips();
+
         $columns = $this->selectedTripExportColumns($request);
         $rows = $this->filteredTripsQuery($request)
             ->get()
@@ -184,6 +198,8 @@ class TripDetailController extends Controller
 
     public function show(TripDetail $trip): View
     {
+        $this->ensureCanViewTrips();
+
         $trip->load([
             'route:id,route_name,starting_point,ending_point',
             'vehicle:id,registration_no',
@@ -208,7 +224,7 @@ class TripDetailController extends Controller
 
         $payload = $request->validated();
         $payload['department_id'] = $this->resolveDepartmentId($request, $payload);
-        ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
+        ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($request, $payload);
         $payload['fare_amount'] = $fareAmount;
         $payload['total_amount'] = $totalAmount;
         $payload['created_by'] = auth()->id();
@@ -252,14 +268,51 @@ class TripDetailController extends Controller
 
         $payload = $request->validated();
         $payload['department_id'] = $this->resolveDepartmentId($request, $payload, $trip);
-        ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($payload);
+        ['fare_amount' => $fareAmount, 'total_amount' => $totalAmount] = $this->resolveTripAmounts($request, $payload);
         $payload['fare_amount'] = $fareAmount;
         $payload['total_amount'] = $totalAmount;
+        $oldValues = $trip->only([
+            'trip_date',
+            'route_id',
+            'vehicle_id',
+            'transporter_id',
+            'driver_name',
+            'driver_cnic',
+            'driver_mobile',
+            'fare_id',
+            'fare_amount',
+            'is_half_trip',
+            'no_of_trips',
+            'total_amount',
+            'district_id',
+            'department_id',
+            'status',
+            'remarks',
+        ]);
 
         DB::transaction(function () use ($trip, $payload): void {
             $trip->update($payload);
             $this->syncTripCost($trip->fresh(), $payload);
         });
+
+        AuditLog::recordEvent('trip.updated', $request, $trip->fresh(), $oldValues, $trip->fresh()->only([
+            'trip_date',
+            'route_id',
+            'vehicle_id',
+            'transporter_id',
+            'driver_name',
+            'driver_cnic',
+            'driver_mobile',
+            'fare_id',
+            'fare_amount',
+            'is_half_trip',
+            'no_of_trips',
+            'total_amount',
+            'district_id',
+            'department_id',
+            'status',
+            'remarks',
+        ]));
 
         return redirect()->route('trips.edit', $trip)
             ->with('success', 'Trip updated successfully.');
@@ -269,10 +322,31 @@ class TripDetailController extends Controller
     {
         $this->ensureCanDeleteTrips();
 
+        $oldValues = $trip->only([
+            'trip_date',
+            'route_id',
+            'vehicle_id',
+            'transporter_id',
+            'driver_name',
+            'driver_cnic',
+            'driver_mobile',
+            'fare_id',
+            'fare_amount',
+            'is_half_trip',
+            'no_of_trips',
+            'total_amount',
+            'district_id',
+            'department_id',
+            'status',
+            'remarks',
+        ]);
+
         DB::transaction(function () use ($trip): void {
             $trip->tripCost()?->delete();
             $trip->delete();
         });
+
+        AuditLog::recordEvent('trip.deleted', request(), $trip, $oldValues, []);
 
         return redirect()->route('trips.index')
             ->with('success', 'Trip deleted successfully.');
@@ -301,13 +375,15 @@ class TripDetailController extends Controller
         );
     }
 
-    private function resolveTripAmounts(array $payload): array
+    private function resolveTripAmounts(Request $request, array $payload): array
     {
         $baseFareAmount = (float) Fare::query()->whereKey($payload['fare_id'])->value('amount');
         $fareAmount = !empty($payload['is_half_trip'])
             ? round($baseFareAmount / 2, 2)
             : round($baseFareAmount, 2);
-        $totalAmount = round($fareAmount * (int) $payload['no_of_trips'], 2);
+        $totalAmount = $request->user()?->canEditTripTotalAmount()
+            ? round((float) $payload['total_amount'], 2)
+            : round($fareAmount * (int) $payload['no_of_trips'], 2);
 
         return [
             'fare_amount' => $fareAmount,
@@ -326,9 +402,12 @@ class TripDetailController extends Controller
 
     private function sharedData(): array
     {
+        $scopedRouteIds = auth()->user()?->scopedRouteIds();
+
         $routes = TransportRoute::query()
             ->select(['id', 'route_name', 'starting_point', 'ending_point', 'district_id'])
             ->with(['district:id,name'])
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('id', $scopedRouteIds))
             ->orderBy('route_name')
             ->get();
         $vehicles = Vehicle::query()
@@ -339,12 +418,14 @@ class TripDetailController extends Controller
                 'route.district:id,name',
                 'vehicleType:id,name',
             ])
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds))
             ->orderBy('registration_no')
             ->get();
         $fares = Fare::query()
             ->select(['id', 'route_id', 'amount', 'status', 'effective_from'])
             ->with(['route:id,route_name'])
             ->where('status', 'active')
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds))
             ->orderByDesc('effective_from')
             ->get();
         $stats = TripDetail::query()
@@ -352,13 +433,14 @@ class TripDetailController extends Controller
             ->selectRaw("SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as today", [today()->toDateString()])
             ->selectRaw("SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active")
             ->selectRaw('COALESCE(SUM(total_amount), 0) as amount')
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds))
             ->first();
 
         return [
             'routes' => $routes,
             'vehicles' => $vehicles,
             'transporters' => Operator::query()->select(['id', 'name', 'cnic', 'owner_type'])->orderBy('name')->get(),
-            'users' => auth()->user()?->isSuperadmin()
+            'users' => auth()->user()?->canManageUsers()
                 ? User::query()->select(['id', 'name', 'email'])->orderBy('name')->get()
                 : collect(),
             'ownerTypes' => Operator::OWNER_TYPES,
@@ -370,6 +452,9 @@ class TripDetailController extends Controller
             'canCreateTrips' => auth()->user()?->canCreateTrips() ?? false,
             'canEditTrips' => auth()->user()?->canEditTrips() ?? false,
             'canDeleteTrips' => auth()->user()?->canDeleteTrips() ?? false,
+            'canChangeTripRoute' => auth()->user()?->canChangeTripRoute() ?? false,
+            'canEditTripDriverName' => auth()->user()?->canEditTripDriverName() ?? false,
+            'canEditTripTotalAmount' => auth()->user()?->canEditTripTotalAmount() ?? false,
             'stats' => [
                 'total' => (int) ($stats?->total ?? 0),
                 'today' => (int) ($stats?->today ?? 0),
@@ -384,6 +469,11 @@ class TripDetailController extends Controller
         abort_unless(auth()->user()?->canCreateTrips(), 403);
     }
 
+    private function ensureCanViewTrips(): void
+    {
+        abort_unless(auth()->user()?->canAccessPage('trips.view'), 403);
+    }
+
     private function ensureCanEditTrips(): void
     {
         abort_unless(auth()->user()?->canEditTrips(), 403);
@@ -394,9 +484,21 @@ class TripDetailController extends Controller
         abort_unless(auth()->user()?->canDeleteTrips(), 403);
     }
 
+    private function ensureVehicleWithinScope(Vehicle $vehicle): void
+    {
+        $scopedRouteIds = auth()->user()?->scopedRouteIds();
+
+        if ($scopedRouteIds === null) {
+            return;
+        }
+
+        abort_unless(in_array((int) $vehicle->route_id, $scopedRouteIds, true), 403);
+    }
+
     private function filteredTripsQuery(Request $request)
     {
         $filters = $this->filterValues($request);
+        $scopedRouteIds = $request->user()?->scopedRouteIds();
 
         return TripDetail::query()
             ->select([
@@ -453,6 +555,7 @@ class TripDetailController extends Controller
                         ->orWhereHas('district', fn ($districtQuery) => $districtQuery->where('name', 'like', "%{$search}%"));
                 });
             })
+            ->when($scopedRouteIds !== null, fn ($query) => $query->whereIn('route_id', $scopedRouteIds))
             ->when($filters['status'], fn ($query, $status) => $query->where('status', $status))
             ->when($filters['district_id'], fn ($query, $districtId) => $query->where('district_id', $districtId))
             ->when($filters['transporter_id'], fn ($query, $transporterId) => $query->where('transporter_id', $transporterId))
@@ -471,7 +574,7 @@ class TripDetailController extends Controller
             'district_id' => $request->integer('district_id') ?: null,
             'transporter_id' => $request->integer('transporter_id') ?: null,
             'route_id' => $request->integer('route_id') ?: null,
-            'created_by' => $request->user()?->isSuperadmin() ? ($request->integer('created_by') ?: null) : null,
+            'created_by' => $request->user()?->canManageUsers() ? ($request->integer('created_by') ?: null) : null,
             'from_date' => $request->input('from_date'),
             'to_date' => $request->input('to_date'),
         ];

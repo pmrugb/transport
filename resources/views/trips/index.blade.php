@@ -209,7 +209,7 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                @if (auth()->user()?->isSuperadmin())
+                                @if (auth()->user()?->canManageUsers())
                                     <div class="col-md-2">
                                         <label class="form-label fw-semibold" for="created_by">Created By</label>
                                         <select class="form-select" id="created_by" name="created_by">

@@ -11,7 +11,7 @@ class CaptchaSettingsController extends Controller
 {
     public function edit(): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageCaptcha();
 
         return view('settings.captcha', [
             'loginCaptchaEnabled' => Setting::loginCaptchaEnabled(),
@@ -22,7 +22,7 @@ class CaptchaSettingsController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageCaptcha();
 
         Setting::set('login_recaptcha_enabled', $request->boolean('login_recaptcha_enabled'));
 
@@ -30,8 +30,8 @@ class CaptchaSettingsController extends Controller
             ->with('success', 'Captcha settings updated successfully.');
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanManageCaptcha(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canManageCaptcha(), 403);
     }
 }

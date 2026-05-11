@@ -2,7 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Models\Role;
+use App\Models\TransportRoute;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Tests\TestCase;
 
 class UserNatcoAccessTest extends TestCase
@@ -36,5 +39,29 @@ class UserNatcoAccessTest extends TestCase
         $this->assertFalse($user->canManagePayments());
         $this->assertTrue($user->canAccessPaymentsModule());
         $this->assertTrue($user->canSeePaymentsNav());
+    }
+
+    public function test_route_scoped_user_can_have_multiple_routes(): void
+    {
+        $user = new User([
+            'name' => 'Route User',
+            'email' => 'route@example.com',
+            'password' => 'password',
+            'all_routes_access' => false,
+        ]);
+
+        $user->setRelation('accessRole', new Role([
+            'slug' => 'route_user',
+            'access_scope' => 'route',
+        ]));
+        $user->setRelation('routes', new EloquentCollection([
+            (new TransportRoute())->forceFill(['id' => 11, 'route_name' => 'Route 11']),
+            (new TransportRoute())->forceFill(['id' => 14, 'route_name' => 'Route 14']),
+        ]));
+
+        $this->assertSame([11, 14], $user->scopedRouteIds());
+        $this->assertTrue($user->hasRouteAccess(11));
+        $this->assertTrue($user->hasRouteAccess(14));
+        $this->assertFalse($user->hasRouteAccess(19));
     }
 }

@@ -13,6 +13,8 @@ class FareController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureCanViewFares();
+
         $perPage = $this->resolvePerPage($request);
         $fareQuery = Fare::query()
             ->with('route')
@@ -29,6 +31,8 @@ class FareController extends Controller
 
     public function create(): View
     {
+        $this->ensureCanCreateFares();
+
         return view('fares.create', [
             ...$this->sharedData(),
             'fare' => new Fare(),
@@ -40,6 +44,8 @@ class FareController extends Controller
 
     public function store(StoreFareRequest $request): RedirectResponse
     {
+        $this->ensureCanCreateFares();
+
         Fare::create($request->validated());
 
         return redirect()->route('fares.create')
@@ -48,6 +54,8 @@ class FareController extends Controller
 
     public function show(Fare $fare): View
     {
+        $this->ensureCanViewFares();
+
         return view('fares.show', [
             ...$this->sharedData(),
             'fare' => $fare->load('route'),
@@ -56,7 +64,7 @@ class FareController extends Controller
 
     public function edit(Fare $fare): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageFares();
 
         return view('fares.edit', [
             ...$this->sharedData(),
@@ -69,7 +77,7 @@ class FareController extends Controller
 
     public function update(StoreFareRequest $request, Fare $fare): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageFares();
 
         $fare->update($request->validated());
 
@@ -79,7 +87,7 @@ class FareController extends Controller
 
     public function destroy(Fare $fare): RedirectResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanManageFares();
 
         $fare->delete();
 
@@ -92,7 +100,7 @@ class FareController extends Controller
         return [
             'routes' => TransportRoute::query()->orderBy('route_name')->get(),
             'statuses' => Fare::STATUSES,
-            'canManageFares' => auth()->user()?->isSuperadmin() ?? false,
+            'canManageFares' => auth()->user()?->canManageFares() ?? false,
             'stats' => [
                 'total' => Fare::count(),
                 'active' => Fare::query()->where('status', 'active')->count(),
@@ -101,8 +109,18 @@ class FareController extends Controller
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewFares(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewFares(), 403);
+    }
+
+    private function ensureCanCreateFares(): void
+    {
+        abort_unless(auth()->user()?->canCreateFares(), 403);
+    }
+
+    private function ensureCanManageFares(): void
+    {
+        abort_unless(auth()->user()?->canManageFares(), 403);
     }
 }

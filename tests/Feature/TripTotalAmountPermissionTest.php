@@ -8,118 +8,128 @@ use App\Models\Fare;
 use App\Models\Operator;
 use App\Models\Role;
 use App\Models\TransportRoute;
+use App\Models\TripDetail;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TripDuplicateWarningTest extends TestCase
+class TripTotalAmountPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_second_trip_for_same_vehicle_on_today_is_blocked_by_default(): void
-    {
-        $user = User::factory()->create([
-            'email' => 'trip-warning@example.com',
-        ]);
-
-        $tripContext = $this->createTripContext();
-
-        $payload = [
-            'trip_date' => today()->toDateString(),
-            'route_id' => $tripContext['route']->id,
-            'vehicle_id' => $tripContext['vehicle']->id,
-            'transporter_id' => $tripContext['transporter']->id,
-            'driver_name' => 'Warning Driver',
-            'driver_cnic' => '12345-1234567-1',
-            'driver_mobile' => '0312-1234567',
-            'fare_id' => $tripContext['fare']->id,
-            'fare_amount' => 2500,
-            'no_of_trips' => 1,
-            'total_amount' => 2500,
-            'district_id' => $tripContext['district']->id,
-            'status' => 'active',
-            'remarks' => 'Trip warning test',
-        ];
-
-        $this->actingAs($user)->post(route('trips.store'), $payload)
-            ->assertRedirect(route('trips.create'))
-            ->assertSessionDoesntHaveErrors();
-
-        $this->actingAs($user)->post(route('trips.store'), $payload)
-            ->assertSessionHasErrors([
-                'vehicle_id' => 'Only one trip per vehicle is allowed for the selected date.',
-            ]);
-    }
-
-    public function test_role_can_allow_multiple_trips_per_vehicle_per_day(): void
+    public function test_trip_total_amount_is_recalculated_without_manual_total_permission(): void
     {
         Role::create([
-            'name' => 'Multiple Trip Role',
-            'slug' => 'multiple_trip_role',
+            'name' => 'Trip Creator',
+            'slug' => 'trip_creator',
             'access_scope' => 'global',
             'can_view' => true,
             'can_create' => true,
             'page_permissions' => [
                 'trips.view',
                 'trips.create',
-                'trips.single_vehicle_per_day',
             ],
         ]);
 
         $user = User::factory()->create([
-            'email' => 'multi-trip@example.com',
-            'role' => 'multiple_trip_role',
+            'email' => 'trip-creator@example.com',
+            'role' => 'trip_creator',
         ]);
 
         $tripContext = $this->createTripContext();
 
-        $payload = [
+        $this->actingAs($user)->post(route('trips.store'), [
             'trip_date' => today()->toDateString(),
             'route_id' => $tripContext['route']->id,
             'vehicle_id' => $tripContext['vehicle']->id,
             'transporter_id' => $tripContext['transporter']->id,
-            'driver_name' => 'Restricted Driver',
+            'driver_name' => 'Test Driver',
             'driver_cnic' => '12345-1234567-1',
             'driver_mobile' => '0312-1234567',
             'fare_id' => $tripContext['fare']->id,
             'fare_amount' => 2500,
-            'no_of_trips' => 1,
-            'total_amount' => 2500,
+            'no_of_trips' => 2,
+            'total_amount' => 9999,
             'district_id' => $tripContext['district']->id,
             'status' => 'active',
-            'remarks' => 'Single trip enforcement test',
-        ];
+            'remarks' => 'No manual total permission',
+        ])->assertRedirect(route('trips.create'));
 
-        $this->actingAs($user)->post(route('trips.store'), $payload)
-            ->assertRedirect(route('trips.create'))
-            ->assertSessionDoesntHaveErrors();
+        $trip = TripDetail::query()->latest('id')->firstOrFail();
 
-        $this->actingAs($user)->post(route('trips.store'), $payload)
-            ->assertRedirect(route('trips.create'))
-            ->assertSessionDoesntHaveErrors();
+        $this->assertSame(5000.0, (float) $trip->total_amount);
+    }
+
+    public function test_trip_total_amount_is_saved_as_entered_with_manual_total_permission(): void
+    {
+        Role::create([
+            'name' => 'Trip Total Editor',
+            'slug' => 'trip_total_editor',
+            'access_scope' => 'global',
+            'can_view' => true,
+            'can_create' => true,
+            'page_permissions' => [
+                'trips.view',
+                'trips.create',
+                'trips.edit_total_amount',
+            ],
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'trip-total-editor@example.com',
+            'role' => 'trip_total_editor',
+        ]);
+
+        $tripContext = $this->createTripContext('GLT-TOTAL-2', 'CHASSIS-TOTAL-2', '12345-1234567-2');
+
+        $this->actingAs($user)->post(route('trips.store'), [
+            'trip_date' => today()->toDateString(),
+            'route_id' => $tripContext['route']->id,
+            'vehicle_id' => $tripContext['vehicle']->id,
+            'transporter_id' => $tripContext['transporter']->id,
+            'driver_name' => 'Test Driver',
+            'driver_cnic' => '12345-1234567-1',
+            'driver_mobile' => '0312-1234567',
+            'fare_id' => $tripContext['fare']->id,
+            'fare_amount' => 2500,
+            'no_of_trips' => 2,
+            'total_amount' => 4700,
+            'district_id' => $tripContext['district']->id,
+            'status' => 'active',
+            'remarks' => 'Manual total permission',
+        ])->assertRedirect(route('trips.create'));
+
+        $trip = TripDetail::query()->latest('id')->firstOrFail();
+
+        $this->assertSame(4700.0, (float) $trip->total_amount);
     }
 
     /**
      * @return array{district: District, route: TransportRoute, transporter: Operator, vehicle: Vehicle, fare: Fare}
      */
-    private function createTripContext(): array
-    {
+    private function createTripContext(
+        string $registrationNo = 'GLT-TOTAL-1',
+        string $chassisNo = 'CHASSIS-TOTAL-1',
+        string $cnic = '12345-1234567-1'
+    ): array {
+        $suffix = substr(preg_replace('/[^A-Za-z0-9]/', '', $registrationNo), -2) ?: '01';
+
         $division = Division::create([
-            'name' => 'Warning Division',
+            'name' => 'Total Division '.$suffix,
         ]);
 
         $district = District::create([
             'division_id' => $division->id,
-            'name' => 'Warning District',
+            'name' => 'Total District '.$suffix,
             'division_name' => $division->name,
         ]);
 
         $route = TransportRoute::create([
-            'route_name' => 'Warning Route',
-            'starting_point' => 'Start Point',
-            'ending_point' => 'End Point',
+            'route_name' => 'Total Route '.$suffix,
+            'starting_point' => 'Start '.$suffix,
+            'ending_point' => 'End '.$suffix,
             'timing' => 'Morning',
             'total_distance' => 50,
             'district_id' => $district->id,
@@ -127,23 +137,23 @@ class TripDuplicateWarningTest extends TestCase
 
         $transporter = Operator::create([
             'owner_type' => 'private',
-            'name' => 'Warning Transporter',
-            'cnic' => '12345-1234567-1',
+            'name' => 'Total Transporter '.$suffix,
+            'cnic' => $cnic,
             'phone' => '0312-1234567',
-            'address' => 'Warning Address',
+            'address' => 'Total Address '.$suffix,
             'district_id' => $district->id,
         ]);
 
         $vehicleType = VehicleType::create([
-            'name' => 'Warning Vehicle Type',
+            'name' => 'Total Vehicle Type '.$suffix,
             'status' => 'active',
         ]);
 
         $vehicle = Vehicle::create([
             'transporter_id' => $transporter->id,
             'vehicle_type' => $vehicleType->id,
-            'registration_no' => 'GLT-WARN-1',
-            'chassis_no' => 'CHASSIS-WARN-1',
+            'registration_no' => $registrationNo,
+            'chassis_no' => $chassisNo,
             'route_id' => $route->id,
             'status' => 'active',
         ]);

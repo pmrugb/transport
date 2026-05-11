@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Grant;
 use App\Models\District;
 use App\Models\Operator;
@@ -74,7 +75,7 @@ class PaymentController extends Controller
 
     public function updateStatus(Request $request, TripCost $payment): RedirectResponse
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        $this->ensureCanEditPaymentStatus();
 
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:'.implode(',', array_keys(TripCost::STATUSES))],
@@ -90,9 +91,16 @@ class PaymentController extends Controller
                 ->withErrors(['reason' => 'A reason is required for on hold or rejected payments.']);
         }
 
+        $oldValues = $payment->only(['status', 'remarks']);
+
         $payment->update([
             'status' => $status,
             'remarks' => in_array($status, ['on_hold', 'rejected'], true) ? $reason : null,
+        ]);
+
+        AuditLog::recordEvent('payment.status_updated', $request, $payment, $oldValues, [
+            'status' => $payment->status,
+            'remarks' => $payment->remarks,
         ]);
 
         $statusLabel = TripCost::STATUSES[$status] ?? Str::headline($status);
@@ -189,9 +197,16 @@ class PaymentController extends Controller
             return redirect()->route('payments.index')->with('error', 'This payment cannot be approved in its current state.');
         }
 
+        $oldValues = $payment->only(['status', 'remarks']);
+
         $payment->update([
             'status' => 'paid',
             'remarks' => null,
+        ]);
+
+        AuditLog::recordEvent('payment.approved', request(), $payment, $oldValues, [
+            'status' => $payment->status,
+            'remarks' => $payment->remarks,
         ]);
 
         return redirect()->route('payments.index')->with('success', 'Payment approved successfully and moved to paid payments.');
@@ -209,9 +224,16 @@ class PaymentController extends Controller
             'reason' => ['required', 'string', 'max:2000'],
         ]);
 
+        $oldValues = $payment->only(['status', 'remarks']);
+
         $payment->update([
             'status' => 'on_hold',
             'remarks' => trim($validated['reason']),
+        ]);
+
+        AuditLog::recordEvent('payment.held', $request, $payment, $oldValues, [
+            'status' => $payment->status,
+            'remarks' => $payment->remarks,
         ]);
 
         return back()->with('success', 'Payment marked as on hold successfully.');
@@ -229,9 +251,16 @@ class PaymentController extends Controller
             'reason' => ['required', 'string', 'max:2000'],
         ]);
 
+        $oldValues = $payment->only(['status', 'remarks']);
+
         $payment->update([
             'status' => 'rejected',
             'remarks' => trim($validated['reason']),
+        ]);
+
+        AuditLog::recordEvent('payment.rejected', $request, $payment, $oldValues, [
+            'status' => $payment->status,
+            'remarks' => $payment->remarks,
         ]);
 
         return back()->with('success', 'Payment rejected successfully.');
@@ -254,6 +283,12 @@ class PaymentController extends Controller
         if ($approvedCount === 0) {
             return back()->with('error', 'No due payments were selected for approval.');
         }
+
+        AuditLog::recordEvent('payment.bulk_approved', $request, null, [], [
+            'approved_count' => $approvedCount,
+        ], [
+            'payment_ids' => $validated['payment_ids'],
+        ]);
 
         $label = $approvedCount === 1 ? 'payment' : 'payments';
 
@@ -303,6 +338,7 @@ class PaymentController extends Controller
             'transporters' => Operator::query()->select(['id', 'name', 'cnic'])->orderBy('name')->get(),
             'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
             'canManagePayments' => auth()->user()?->canManagePayments() ?? false,
+            'canEditPaymentStatus' => auth()->user()?->canEditPaymentStatus() ?? false,
             'stats' => [
                 'total' => (int) ($paymentStats?->total ?? 0),
                 'due' => (int) ($paymentStats?->due ?? 0),
@@ -331,9 +367,18 @@ class PaymentController extends Controller
         );
     }
 
+    private function ensureCanEditPaymentStatus(): void
+    {
+        abort_unless(
+            (auth()->user()?->canAccessPaymentsModule() ?? false)
+            && (auth()->user()?->canEditPaymentStatus() ?? false),
+            403
+        );
+    }
+
     private function ensureCanAccessPaymentsModule(): void
     {
-        abort_unless(auth()->user()?->canAccessPaymentsModule(), 403);
+        abort_unless(auth()->user()?->canAccessPage('payments.view'), 403);
     }
 
     private function filteredPaymentsQuery(Request $request)

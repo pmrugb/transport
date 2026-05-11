@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleAccessRequest;
 use App\Http\Requests\UpdateRoleDetailsRequest;
+use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,8 @@ class RoleController extends Controller
 {
     public function create(): View
     {
+        $this->ensureCanManageRoles();
+
         return view('settings.roles.create', [
             ...$this->sharedData(),
             'role' => new Role([
@@ -31,6 +34,8 @@ class RoleController extends Controller
 
     public function index(Request $request): View
     {
+        $this->ensureCanManageRoles();
+
         $perPage = $this->resolvePerPage($request);
         $roleQuery = Role::query()->withCount('users')->latest();
 
@@ -43,6 +48,8 @@ class RoleController extends Controller
 
     public function edit(Role $role): View
     {
+        $this->ensureCanManageRoles();
+
         return view('settings.roles.edit', [
             ...$this->sharedData(),
             'role' => $role,
@@ -56,7 +63,18 @@ class RoleController extends Controller
 
     public function store(StoreRoleRequest $request): RedirectResponse
     {
-        Role::create($request->validated());
+        $this->ensureCanManageRoles();
+
+        $role = Role::create($request->validated());
+
+        AuditLog::recordEvent('role.created', $request, $role, [], $role->fresh()->only([
+            'name',
+            'slug',
+            'description',
+            'access_scope',
+            'sidebar_permissions',
+            'page_permissions',
+        ]));
 
         return redirect()->route('settings.roles.index')
             ->with('success', 'Role created successfully.');
@@ -64,7 +82,27 @@ class RoleController extends Controller
 
     public function update(StoreRoleRequest $request, Role $role): RedirectResponse
     {
+        $this->ensureCanManageRoles();
+
+        $oldValues = $role->only([
+            'name',
+            'slug',
+            'description',
+            'access_scope',
+            'sidebar_permissions',
+            'page_permissions',
+        ]);
+
         $role->update($request->validated());
+
+        AuditLog::recordEvent('role.updated', $request, $role, $oldValues, $role->fresh()->only([
+            'name',
+            'slug',
+            'description',
+            'access_scope',
+            'sidebar_permissions',
+            'page_permissions',
+        ]));
 
         return redirect()->route('settings.roles.edit', $role)
             ->with('success', 'Role updated successfully.');
@@ -72,13 +110,22 @@ class RoleController extends Controller
 
     public function updateDetails(UpdateRoleDetailsRequest $request, Role $role): RedirectResponse
     {
+        $this->ensureCanManageRoles();
+
         $payload = $request->validated();
 
         if ($role->is_system) {
             unset($payload['slug']);
         }
 
+        $oldValues = $role->only(['name', 'slug', 'description']);
         $role->update($payload);
+
+        AuditLog::recordEvent('role.details_updated', $request, $role, $oldValues, $role->fresh()->only([
+            'name',
+            'slug',
+            'description',
+        ]));
 
         return redirect()->route('settings.roles.index')
             ->with('success', 'Role details updated successfully.');
@@ -86,7 +133,16 @@ class RoleController extends Controller
 
     public function updateAccess(UpdateRoleAccessRequest $request, Role $role): RedirectResponse
     {
+        $this->ensureCanManageRoles();
+
+        $oldValues = $role->only(['access_scope', 'sidebar_permissions', 'page_permissions']);
         $role->update($request->validated());
+
+        AuditLog::recordEvent('role.access_updated', $request, $role, $oldValues, $role->fresh()->only([
+            'access_scope',
+            'sidebar_permissions',
+            'page_permissions',
+        ]));
 
         return redirect()->route('settings.roles.index')
             ->with('success', 'Role access updated successfully.');
@@ -94,11 +150,23 @@ class RoleController extends Controller
 
     public function destroy(Role $role): RedirectResponse
     {
+        $this->ensureCanManageRoles();
+
         if ($role->is_system) {
             return redirect()->route('settings.roles.index')
                 ->with('error', 'System roles cannot be deleted.');
         }
 
+        $oldValues = $role->only([
+            'name',
+            'slug',
+            'description',
+            'access_scope',
+            'sidebar_permissions',
+            'page_permissions',
+        ]);
+
+        AuditLog::recordEvent('role.deleted', request(), $role, $oldValues, []);
         $role->delete();
 
         return redirect()->route('settings.roles.index')
@@ -109,11 +177,18 @@ class RoleController extends Controller
     {
         return [
             'accessScopes' => Role::ACCESS_SCOPES,
+            'sidebarGroups' => Role::SIDEBAR_GROUPS,
+            'pagePermissionGroups' => Role::PAGE_PERMISSION_GROUPS,
             'stats' => [
                 'total' => Role::count(),
                 'system' => Role::query()->where('is_system', true)->count(),
                 'custom' => Role::query()->where('is_system', false)->count(),
             ],
         ];
+    }
+
+    private function ensureCanManageRoles(): void
+    {
+        abort_unless(auth()->user()?->canManageRoles(), 403);
     }
 }

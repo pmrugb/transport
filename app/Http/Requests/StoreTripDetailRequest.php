@@ -91,10 +91,29 @@ class StoreTripDetailRequest extends FormRequest
             $vehicle = Vehicle::query()->with('route')->find($this->integer('vehicle_id'));
             $route = TransportRoute::query()->find($this->integer('route_id'));
             $fare = Fare::query()->find($this->integer('fare_id'));
+            $tripId = $this->route('trip')?->id;
 
             if ($vehicle) {
+                $scopedRouteIds = $this->user()?->scopedRouteIds();
+
+                if ($scopedRouteIds !== null && ! in_array((int) $vehicle->route_id, $scopedRouteIds, true)) {
+                    $validator->errors()->add('vehicle_id', 'Selected vehicle is not available for your assigned route.');
+                }
+
                 if ((int) $vehicle->transporter_id !== $this->integer('transporter_id')) {
                     $validator->errors()->add('transporter_id', 'Selected transporter does not match the selected vehicle.');
+                }
+
+                if (! ($this->user()?->canAddMultipleTripsPerVehiclePerDay() ?? false) && $this->filled('trip_date')) {
+                    $existingTripExists = TripDetail::query()
+                        ->where('vehicle_id', $vehicle->id)
+                        ->whereDate('trip_date', (string) $this->input('trip_date'))
+                        ->when($tripId, fn ($query) => $query->whereKeyNot($tripId))
+                        ->exists();
+
+                    if ($existingTripExists) {
+                        $validator->errors()->add('vehicle_id', 'Only one trip per vehicle is allowed for the selected date.');
+                    }
                 }
             }
 

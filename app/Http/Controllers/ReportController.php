@@ -8,7 +8,7 @@ use App\Models\District;
 use App\Models\Operator;
 use App\Models\TransportRoute;
 use App\Models\TripCost;
-use App\Models\TripDetail;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -20,12 +20,20 @@ class ReportController extends Controller
 
     public function index(Request $request): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewReports();
 
         $perPage = $this->resolvePerPage($request);
         $filters = $this->filterValues($request);
         $reportsQuery = $this->filteredReportsQuery($request);
         $statsQuery = $this->filteredReportsQuery($request);
+        $halfTripsQuery = $this->filteredReportsQuery($request)
+            ->whereHas('trip', fn ($tripQuery) => $tripQuery->where('is_half_trip', true));
+        $fullTripsQuery = $this->filteredReportsQuery($request)
+            ->whereHas('trip', fn ($tripQuery) => $tripQuery->where(function ($innerQuery) {
+                $innerQuery->where('is_half_trip', false)->orWhereNull('is_half_trip');
+            }));
+        $halfTrips = (int) ((clone $halfTripsQuery)->sum('no_of_trips') ?: 0);
+        $fullTrips = (int) ((clone $fullTripsQuery)->sum('no_of_trips') ?: 0);
 
         return view('reports.index', [
             'perPage' => $perPage,
@@ -34,7 +42,7 @@ class ReportController extends Controller
             'districts' => District::query()->select(['id', 'name'])->orderBy('name')->get(),
             'departments' => Department::query()->select(['id', 'name'])->where('status', 'active')->orderBy('name')->get(),
             'transporters' => Operator::query()->select(['id', 'name'])->orderBy('name')->get(),
-            'routes' => TransportRoute::query()->select(['id', 'route_name', 'starting_point', 'ending_point'])->orderBy('route_name')->get(),
+            'routes' => $this->sortedRoutes(),
             'exportColumns' => $this->reportExportColumns(),
             'selectedExportColumns' => $this->selectedReportExportColumns($request),
             'reports' => $reportsQuery
@@ -42,7 +50,10 @@ class ReportController extends Controller
                 ->withQueryString(),
             'stats' => [
                 'records' => (clone $statsQuery)->count(),
-                'trips' => (int) ((clone $statsQuery)->sum('no_of_trips') ?: 0),
+                'trips' => $fullTrips,
+                'half_trips' => $halfTrips,
+                'total_trips' => $fullTrips + ($halfTrips / 2),
+                'vehicles' => (int) ((clone $statsQuery)->distinct('vehicle_id')->count('vehicle_id') ?: 0),
                 'due' => (clone $statsQuery)->where('status', 'due')->count(),
                 'paid' => (clone $statsQuery)->where('status', 'paid')->count(),
                 'amount' => (float) ((clone $statsQuery)->sum('total_amount') ?: 0),
@@ -52,7 +63,7 @@ class ReportController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewReports();
 
         $columns = $this->selectedReportExportColumns($request);
         $filename = 'reports-'.now()->format('Ymd-His').'.csv';
@@ -62,7 +73,7 @@ class ReportController extends Controller
             fputcsv($handle, array_values($columns));
             $serialNumber = 1;
 
-            foreach ($this->filteredReportsQuery($request)->cursor() as $report) {
+            foreach ($this->sortedReportExports($request) as $report) {
                 fputcsv($handle, array_values($this->reportExportRow($report, $columns, $serialNumber)));
                 $serialNumber++;
             }
@@ -75,11 +86,10 @@ class ReportController extends Controller
 
     public function exportExcel(Request $request): BinaryFileResponse
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewReports();
 
         $columns = $this->selectedReportExportColumns($request);
-        $rows = $this->filteredReportsQuery($request)
-            ->get()
+        $rows = $this->sortedReportExports($request)
             ->values()
             ->map(fn (TripCost $report, int $index): array => $this->reportExportRow($report, $columns, $index + 1))
             ->all();
@@ -97,11 +107,10 @@ class ReportController extends Controller
 
     public function pdfView(Request $request): View
     {
-        $this->ensureSuperadmin();
+        $this->ensureCanViewReports();
 
         $columns = $this->selectedReportExportColumns($request);
-        $rows = $this->filteredReportsQuery($request)
-            ->get()
+        $rows = $this->sortedReportExports($request)
             ->values()
             ->map(fn (TripCost $report, int $index): array => $this->reportExportRow($report, $columns, $index + 1))
             ->all();
@@ -138,7 +147,7 @@ class ReportController extends Controller
                 'created_at',
             ])
             ->with([
-                'trip:id,district_id,department_id,created_by,trip_date,driver_name,driver_mobile,status,remarks',
+                'trip:id,district_id,department_id,created_by,trip_date,driver_name,driver_mobile,status,remarks,is_half_trip',
                 'trip.district:id,name',
                 'trip.department:id,name',
                 'route:id,route_name,starting_point,ending_point,district_id',
@@ -204,12 +213,15 @@ class ReportController extends Controller
             'department' => 'Department',
             'district' => 'District',
             'route' => 'Route',
+            'starting_point' => 'Starting Point',
+            'ending_point' => 'Ending Point',
             'transporter' => 'Transporter',
             'vehicle_registration' => 'Vehicle Registration',
             'vehicle_type' => 'Vehicle Type',
             'driver_name' => 'Driver Name',
             'driver_mobile' => 'Driver Mobile',
             'no_of_trips' => 'No. of Trips',
+            'is_half_trip' => 'Half Trip',
             'fare_amount' => 'Fare Amount',
             'total_amount' => 'Total Amount',
             'remarks' => 'Remarks',
@@ -239,13 +251,16 @@ class ReportController extends Controller
             'status' => TripCost::STATUSES[$report->status] ?? ucfirst((string) $report->status),
             'department' => $trip?->department?->name ?: '',
             'district' => $trip?->district?->name ?: ($route?->district?->name ?: ($transporter?->district?->name ?: '')),
-            'route' => $route?->route_name ?: '',
+            'route' => $this->formatRouteLabel($route),
+            'starting_point' => $route?->starting_point ?: '',
+            'ending_point' => $route?->ending_point ?: '',
             'transporter' => $transporter?->name ?: '',
             'vehicle_registration' => $vehicle?->registration_no ?: '',
             'vehicle_type' => $vehicle?->type?->name ?: '',
             'driver_name' => $trip?->driver_name ?: '',
             'driver_mobile' => $trip?->driver_mobile ?: '',
             'no_of_trips' => $report->no_of_trips,
+            'is_half_trip' => $trip?->is_half_trip ? 'Yes' : 'No',
             'fare_amount' => (float) $report->fare_amount,
             'total_amount' => (float) $report->total_amount,
             'remarks' => $report->remarks ?: ($trip?->remarks ?: ''),
@@ -260,6 +275,83 @@ class ReportController extends Controller
         return $exportRow;
     }
 
+    private function sortedRoutes(): Collection
+    {
+        return TransportRoute::query()
+            ->select(['id', 'route_name', 'starting_point', 'ending_point'])
+            ->get()
+            ->sort(fn (TransportRoute $left, TransportRoute $right): int => $this->compareRoutes($left, $right))
+            ->values();
+    }
+
+    private function sortedReportExports(Request $request): Collection
+    {
+        return $this->filteredReportsQuery($request)
+            ->get()
+            ->sort(function (TripCost $left, TripCost $right): int {
+                $routeComparison = $this->compareRoutes($left->route, $right->route);
+
+                if ($routeComparison !== 0) {
+                    return $routeComparison;
+                }
+
+                $tripDateComparison = strcmp(
+                    (string) $left->trip?->trip_date?->format('Y-m-d'),
+                    (string) $right->trip?->trip_date?->format('Y-m-d')
+                );
+
+                if ($tripDateComparison !== 0) {
+                    return $tripDateComparison;
+                }
+
+                $paymentDateComparison = strcmp(
+                    (string) $left->calculation_date?->format('Y-m-d'),
+                    (string) $right->calculation_date?->format('Y-m-d')
+                );
+
+                if ($paymentDateComparison !== 0) {
+                    return $paymentDateComparison;
+                }
+
+                return $left->id <=> $right->id;
+            })
+            ->values();
+    }
+
+    private function compareRoutes(?TransportRoute $left, ?TransportRoute $right): int
+    {
+        $nameComparison = strnatcasecmp((string) $left?->route_name, (string) $right?->route_name);
+
+        if ($nameComparison !== 0) {
+            return $nameComparison;
+        }
+
+        $startComparison = strcasecmp((string) $left?->starting_point, (string) $right?->starting_point);
+
+        if ($startComparison !== 0) {
+            return $startComparison;
+        }
+
+        return strcasecmp((string) $left?->ending_point, (string) $right?->ending_point);
+    }
+
+    private function formatRouteLabel(?TransportRoute $route): string
+    {
+        if (! $route) {
+            return '';
+        }
+
+        $routeName = trim((string) $route->route_name);
+        $startingPoint = trim((string) $route->starting_point);
+        $endingPoint = trim((string) $route->ending_point);
+
+        if ($startingPoint === '' && $endingPoint === '') {
+            return $routeName;
+        }
+
+        return trim($routeName . ' (' . ($startingPoint !== '' ? $startingPoint : 'N/A') . ' -> ' . ($endingPoint !== '' ? $endingPoint : 'N/A') . ')');
+    }
+
     private function reportFilterLabels(array $filters): array
     {
         return [
@@ -269,13 +361,13 @@ class ReportController extends Controller
             'Trip Date To' => $filters['to_date'],
             'District' => $filters['district_id'] ? District::query()->whereKey($filters['district_id'])->value('name') : null,
             'Department' => $filters['department_id'] ? Department::query()->whereKey($filters['department_id'])->value('name') : null,
-            'Route' => $filters['route_id'] ? TransportRoute::query()->whereKey($filters['route_id'])->value('route_name') : null,
+            'Route' => $filters['route_id'] ? $this->formatRouteLabel(TransportRoute::query()->find($filters['route_id'])) : null,
             'Transporter' => $filters['transporter_id'] ? Operator::query()->whereKey($filters['transporter_id'])->value('name') : null,
         ];
     }
 
-    private function ensureSuperadmin(): void
+    private function ensureCanViewReports(): void
     {
-        abort_unless(auth()->user()?->isSuperadmin(), 403);
+        abort_unless(auth()->user()?->canViewReports(), 403);
     }
 }

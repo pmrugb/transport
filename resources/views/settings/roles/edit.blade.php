@@ -12,7 +12,7 @@
 
     <section class="row g-4 stats-overlap">
         <div class="col-12">
-            <div class="card section-card">
+            <div class="card section-card" id="role-access-builder">
                 <div class="card-header">
                     <h3 class="section-title">Role Details</h3>
                     <p class="section-copy">Edit role identity, access scope, and permission settings below.</p>
