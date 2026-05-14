@@ -620,8 +620,9 @@
                         </tbody>
                     </table>
                 </div>
+
+                @include('settings.partials.pagination', ['paginator' => $recoveryItems, 'perPage' => $perPage])
             </div>
-            @include('settings.partials.pagination', ['paginator' => $recoveryItems, 'perPage' => $perPage])
         </section>
 
         <div class="modal fade recovery-compare-modal" id="recoveryCompareModal" tabindex="-1" aria-labelledby="recoveryCompareModalLabel" aria-hidden="true">
