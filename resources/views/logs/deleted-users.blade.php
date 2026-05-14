@@ -77,7 +77,7 @@
                                 <td class="text-break">{{ $deletedUser->email }}</td>
                                 <td class="text-break">{{ $originalEmail ?: '-' }}</td>
                                 <td>{{ $deletedUser->accessRole?->name ?: $deletedUser->role ?: '-' }}</td>
-                                <td class="text-nowrap">{{ $deletedUser->deleted_at?->format('d-m-Y H:i:s') ?: '-' }}</td>
+                                <td class="text-nowrap">{{ $deletedUser->deleted_at?->copy()->timezone('Asia/Karachi')->format('d-m-Y H:i:s') ?: '-' }}</td>
                                 <td>
                                     @if ($canRestore)
                                         <span class="badge text-bg-success">Ready</span>

@@ -187,7 +187,7 @@
                         @forelse ($logs as $log)
                             <tr>
                                 <td>{{ $logs->firstItem() + $loop->index }}</td>
-                                <td class="text-nowrap">{{ $log->created_at->format('d-m-Y H:i:s') }}</td>
+                                <td class="text-nowrap">{{ $log->created_at?->copy()->timezone('Asia/Karachi')->format('d-m-Y H:i:s') }}</td>
                                 <td>{{ $log->user?->name ?: 'Guest/System' }}</td>
                                 <td>{{ \App\Models\SecurityLog::EVENT_LABELS[$log->event_type] ?? $log->event_type }}</td>
                                 <td>{{ $log->email_attempted ?: '-' }}</td>

@@ -589,7 +589,7 @@
                                             -
                                         @endif
                                     </td>
-                                    <td class="text-nowrap">{{ $item['deleted_at']?->format('d-m-Y H:i:s') ?: '-' }}</td>
+                                    <td class="text-nowrap">{{ $item['deleted_at']?->copy()->timezone('Asia/Karachi')->format('d-m-Y H:i:s') ?: '-' }}</td>
                                     <td>
                                         @if ($item['can_restore'])
                                             <span class="recovery-status-badge ready">Ready</span>
