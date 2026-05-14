@@ -429,6 +429,18 @@ class User extends Authenticatable
         return ['email'];
     }
 
+    public function softDeletedOriginalEmail(): ?string
+    {
+        return $this->softDeletedOriginalValueForField('email');
+    }
+
+    public function canRestoreOriginalEmail(): bool
+    {
+        $originalEmail = $this->softDeletedOriginalEmail();
+
+        return $originalEmail !== null && $this->canRestoreSoftDeletedUniqueFields();
+    }
+
     private function isLegacyNatcoDepartmentUser(): bool
     {
         return in_array(strtolower((string) $this->email), self::NATCO_DEPARTMENT_EMAIL_ALIASES, true);

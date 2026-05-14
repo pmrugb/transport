@@ -79,4 +79,59 @@ trait PreservesUniqueFieldsOnSoftDelete
 
         return static::$softDeleteUniqueFieldLengths[$cacheKey] = null;
     }
+
+    public function softDeletedOriginalValueForField(string $field): ?string
+    {
+        $value = $this->getAttribute($field);
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return str_contains($value, '__deleted__')
+            ? explode('__deleted__', $value, 2)[0]
+            : $value;
+    }
+
+    public function softDeletedOriginalValues(): array
+    {
+        if (! method_exists($this, 'getSoftDeleteUniqueFields')) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($this->getSoftDeleteUniqueFields() as $field) {
+            $originalValue = $this->softDeletedOriginalValueForField($field);
+
+            if ($originalValue === null || $originalValue === '') {
+                continue;
+            }
+
+            $values[$field] = $originalValue;
+        }
+
+        return $values;
+    }
+
+    public function canRestoreSoftDeletedUniqueFields(): bool
+    {
+        foreach ($this->softDeletedOriginalValues() as $field => $originalValue) {
+            $conflictExists = static::query()
+                ->where($field, $originalValue)
+                ->whereKeyNot($this->getKey())
+                ->exists();
+
+            if ($conflictExists) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function restoreSoftDeletedUniqueFields(): void
+    {
+        $this->forceFill($this->softDeletedOriginalValues())->save();
+    }
 }

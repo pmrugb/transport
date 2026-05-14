@@ -249,6 +249,7 @@
             <p class="page-eyebrow">Logs</p>
             <h1 class="page-title">Audit Logs</h1>
             <p class="page-subtitle">Track who changed payments, roles, and trip records across the portal.</p>
+            @include('logs.partials.subnav')
         </div>
     </div>
 
@@ -264,7 +265,7 @@
             <div class="audit-filter-toolbar">
                 <h3 class="section-title mb-0">Audit Logs</h3>
                 <div class="audit-filter-actions">
-                    <form method="post" action="{{ route('logs.audit.delete-months', request()->query()) }}" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete all previous months audit logs?">
+                    <form method="post" action="{{ route('logs.audit.delete-months', request()->query()) }}" class="d-inline" data-confirm-delete data-confirm-months="true" data-confirm-months-default="1" data-delete-message="Choose how many recent months to keep before deleting older audit logs.">
                         @csrf
                         @method('DELETE')
                         <button class="btn btn-outline-danger" type="submit"><i class="fa-solid fa-trash-can me-2"></i>Delete Months Logs</button>

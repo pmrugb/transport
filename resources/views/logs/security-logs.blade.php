@@ -100,6 +100,7 @@
             <p class="page-eyebrow">Logs</p>
             <h1 class="page-title">Security Logs</h1>
             <p class="page-subtitle">Track login activity, captcha failures, and other security-related portal events.</p>
+            @include('logs.partials.subnav')
         </div>
     </div>
 
@@ -115,7 +116,7 @@
             <div class="security-filter-toolbar">
                 <h3 class="section-title mb-0">Security Logs</h3>
                 <div class="security-filter-actions">
-                    <form method="post" action="{{ route('logs.security.delete-months', request()->query()) }}" class="d-inline" data-confirm-delete data-delete-message="Are you sure you want to delete all previous months security logs?">
+                    <form method="post" action="{{ route('logs.security.delete-months', request()->query()) }}" class="d-inline" data-confirm-delete data-confirm-months="true" data-confirm-months-default="1" data-delete-message="Choose how many recent months to keep before deleting older security logs.">
                         @csrf
                         @method('DELETE')
                         <button class="btn btn-outline-danger" type="submit"><i class="fa-solid fa-trash-can me-2"></i>Delete Months Logs</button>

@@ -51,12 +51,15 @@ class AuditLogController extends Controller
     {
         $this->ensureCanViewAuditLogs();
 
+        $months = max(1, min(12, $request->integer('months', 1)));
+        $cutoff = now()->subMonths($months)->startOfMonth();
+
         $deleted = AuditLog::query()
-            ->where('created_at', '<', now()->startOfMonth())
+            ->where('created_at', '<', $cutoff)
             ->delete();
 
         return redirect()->route('logs.audit.index', $request->query())
-            ->with('success', $deleted > 0 ? 'Older months audit logs deleted successfully.' : 'No older months audit logs found to delete.');
+            ->with('success', $deleted > 0 ? 'Audit logs older than the selected month window deleted successfully.' : 'No older audit logs found for the selected month window.');
     }
 
     private function filteredLogsQuery(Request $request)

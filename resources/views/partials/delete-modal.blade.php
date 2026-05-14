@@ -8,6 +8,61 @@
             <div class="modal-body" id="deleteConfirmModalMessage">
                 Are you sure you want to delete this record?
             </div>
+            <div class="px-3 px-md-4 pb-2 d-none" id="deleteConfirmModalMonthsWrap">
+                <style>
+                    #deleteConfirmModalMonthsWrap .dropdown-toggle {
+                        min-height: 42px;
+                        border-radius: 0.8rem;
+                        border: 1px solid #dbe4ec;
+                        background: #fff;
+                        color: #1f2f43;
+                        font-size: 0.84rem;
+                        font-weight: 600;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 0.55rem 0.8rem;
+                    }
+
+                    #deleteConfirmModalMonthsWrap .dropdown-menu {
+                        width: 100%;
+                        max-height: 210px;
+                        overflow-y: auto;
+                        border-radius: 0.85rem;
+                        border: 1px solid #dbe4ec;
+                        box-shadow: 0 18px 42px rgba(31, 47, 67, 0.14);
+                        padding: 0.3rem;
+                    }
+
+                    #deleteConfirmModalMonthsWrap .dropdown-item {
+                        border-radius: 0.7rem;
+                        padding: 0.55rem 0.7rem;
+                        font-size: 0.84rem;
+                        font-weight: 600;
+                    }
+
+                    #deleteConfirmModalMonthsWrap .dropdown-item.active,
+                    #deleteConfirmModalMonthsWrap .dropdown-item:active {
+                        background: #2d6948;
+                        color: #fff;
+                    }
+                </style>
+                <label class="form-label fw-semibold" for="deleteConfirmModalMonthsButton">Keep Recent Months</label>
+                <input type="hidden" id="deleteConfirmModalMonths" value="1">
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle w-100" id="deleteConfirmModalMonthsButton" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="deleteConfirmModalMonthsLabel">1 month</span>
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="deleteConfirmModalMonthsButton">
+                        @for ($month = 1; $month <= 12; $month++)
+                            <button class="dropdown-item {{ $month === 1 ? 'active' : '' }}" type="button" data-delete-month-value="{{ $month }}">
+                                {{ $month }} {{ $month === 1 ? 'month' : 'months' }}
+                            </button>
+                        @endfor
+                    </div>
+                </div>
+                <div class="form-text">Older records before this retention window will be deleted.</div>
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="deleteConfirmModalSubmit">Delete</button>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserPasswordRequest;
+use App\Models\AuditLog;
 use App\Models\District;
 use App\Models\Division;
 use App\Models\Role;
@@ -114,7 +115,19 @@ class UserController extends Controller
                 ->with('error', 'You cannot delete your own account.');
         }
 
+        $oldValues = $user->only([
+            'name',
+            'email',
+            'role',
+            'district_id',
+            'division_id',
+            'route_id',
+            'all_routes_access',
+        ]);
+
         $user->delete();
+
+        AuditLog::recordEvent('user.deleted', request(), $user, $oldValues, []);
 
         return redirect()->route('users.index')
             ->with('success', 'User deleted successfully.');

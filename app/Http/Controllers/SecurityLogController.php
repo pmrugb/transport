@@ -37,12 +37,15 @@ class SecurityLogController extends Controller
     {
         $this->ensureCanViewSecurityLogs();
 
+        $months = max(1, min(12, $request->integer('months', 1)));
+        $cutoff = now()->subMonths($months)->startOfMonth();
+
         $deleted = SecurityLog::query()
-            ->where('created_at', '<', now()->startOfMonth())
+            ->where('created_at', '<', $cutoff)
             ->delete();
 
         return redirect()->route('logs.security.index', $request->query())
-            ->with('success', $deleted > 0 ? 'Older months logs deleted successfully.' : 'No older months logs found to delete.');
+            ->with('success', $deleted > 0 ? 'Logs older than the selected month window deleted successfully.' : 'No older logs found for the selected month window.');
     }
 
     private function filteredLogsQuery(Request $request)

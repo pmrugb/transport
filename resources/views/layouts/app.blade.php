@@ -678,7 +678,11 @@
         document.addEventListener('DOMContentLoaded', function () {
             const toasts = document.querySelectorAll('[data-app-toast]');
             const deleteModalElement = document.getElementById('deleteConfirmModal');
+            const deleteModalTitle = document.getElementById('deleteConfirmModalLabel');
             const deleteModalMessage = document.getElementById('deleteConfirmModalMessage');
+            const deleteModalMonthsWrap = document.getElementById('deleteConfirmModalMonthsWrap');
+            const deleteModalMonthsField = document.getElementById('deleteConfirmModalMonths');
+            const deleteModalMonthsLabel = document.getElementById('deleteConfirmModalMonthsLabel');
             const deleteModalSubmit = document.getElementById('deleteConfirmModalSubmit');
             let pendingDeleteForm = null;
 
@@ -723,8 +727,22 @@
                 window.fetch.__transportSessionAware = true;
             }
 
-            if (deleteModalElement && deleteModalMessage && deleteModalSubmit && window.bootstrap && window.bootstrap.Modal) {
+            if (deleteModalElement && deleteModalTitle && deleteModalMessage && deleteModalSubmit && window.bootstrap && window.bootstrap.Modal) {
                 const deleteModal = window.bootstrap.Modal.getOrCreateInstance(deleteModalElement);
+
+                if (deleteModalMonthsWrap && deleteModalMonthsField && deleteModalMonthsLabel) {
+                    deleteModalMonthsWrap.querySelectorAll('[data-delete-month-value]').forEach(function (button) {
+                        button.addEventListener('click', function () {
+                            const monthValue = button.dataset.deleteMonthValue || '1';
+                            deleteModalMonthsField.value = monthValue;
+                            deleteModalMonthsLabel.textContent = monthValue + ' ' + (monthValue === '1' ? 'month' : 'months');
+
+                            deleteModalMonthsWrap.querySelectorAll('[data-delete-month-value]').forEach(function (item) {
+                                item.classList.toggle('active', item === button);
+                            });
+                        });
+                    });
+                }
 
                 document.addEventListener('submit', function (event) {
                     const form = event.target.closest('form[data-confirm-delete]');
@@ -735,13 +753,48 @@
 
                     event.preventDefault();
                     pendingDeleteForm = form;
+                    deleteModalTitle.textContent = form.dataset.confirmTitle || 'Confirm Deletion';
                     deleteModalMessage.innerHTML = form.dataset.deleteMessage || 'Are you sure you want to delete this record?';
+                    deleteModalSubmit.textContent = form.dataset.confirmActionLabel || 'Delete';
+                    deleteModalSubmit.classList.toggle('btn-danger', (form.dataset.confirmActionStyle || 'danger') === 'danger');
+                    deleteModalSubmit.classList.toggle('btn-success', form.dataset.confirmActionStyle === 'success');
+                    deleteModalSubmit.classList.toggle('btn-warning', form.dataset.confirmActionStyle === 'warning');
+                    deleteModalSubmit.classList.toggle('btn-primary', form.dataset.confirmActionStyle === 'primary');
+
+                    if (deleteModalMonthsWrap && deleteModalMonthsField) {
+                        const usesMonthsSelector = form.dataset.confirmMonths === 'true';
+                        deleteModalMonthsWrap.classList.toggle('d-none', !usesMonthsSelector);
+
+                        if (usesMonthsSelector) {
+                            const defaultMonthValue = form.dataset.confirmMonthsDefault || '1';
+                            deleteModalMonthsField.value = defaultMonthValue;
+                            deleteModalMonthsLabel.textContent = defaultMonthValue + ' ' + (defaultMonthValue === '1' ? 'month' : 'months');
+
+                            deleteModalMonthsWrap.querySelectorAll('[data-delete-month-value]').forEach(function (item) {
+                                item.classList.toggle('active', item.dataset.deleteMonthValue === defaultMonthValue);
+                            });
+                        }
+                    }
+
                     deleteModal.show();
                 });
 
                 deleteModalSubmit.addEventListener('click', function () {
                     if (!pendingDeleteForm) {
                         return;
+                    }
+
+                    if (deleteModalMonthsWrap && deleteModalMonthsField && pendingDeleteForm.dataset.confirmMonths === 'true') {
+                        let monthsInput = pendingDeleteForm.querySelector('input[name="months"]');
+
+                        if (!monthsInput) {
+                            monthsInput = document.createElement('input');
+                            monthsInput.type = 'hidden';
+                            monthsInput.name = 'months';
+                            pendingDeleteForm.appendChild(monthsInput);
+                        }
+
+                        monthsInput.value = deleteModalMonthsField.value;
                     }
 
                     pendingDeleteForm.dataset.deleteConfirmed = 'true';
@@ -753,6 +806,21 @@
                         delete pendingDeleteForm.dataset.deleteConfirmed;
                     }
 
+                    deleteModalTitle.textContent = 'Confirm Deletion';
+                    deleteModalMessage.innerHTML = 'Are you sure you want to delete this record?';
+                    deleteModalSubmit.textContent = 'Delete';
+                    deleteModalSubmit.classList.remove('btn-success', 'btn-warning', 'btn-primary');
+                    deleteModalSubmit.classList.add('btn-danger');
+                    if (deleteModalMonthsWrap && deleteModalMonthsField) {
+                        deleteModalMonthsWrap.classList.add('d-none');
+                        deleteModalMonthsField.value = '1';
+                        if (deleteModalMonthsLabel) {
+                            deleteModalMonthsLabel.textContent = '1 month';
+                        }
+                        deleteModalMonthsWrap.querySelectorAll('[data-delete-month-value]').forEach(function (item) {
+                            item.classList.toggle('active', item.dataset.deleteMonthValue === '1');
+                        });
+                    }
                     pendingDeleteForm = null;
                 });
             }

@@ -226,22 +226,27 @@
                     </div>
                 </li>
                 @endif
-                @if ($user?->canAccessSidebar('logs.security') || $user?->canAccessSidebar('logs.audit'))
-                <li class="nav-item nav-item-group {{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'open' : '' }}">
-                    <button class="nav-link nav-link-group-toggle {{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopLogsMenu" aria-expanded="{{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'true' : 'false' }}" aria-controls="desktopLogsMenu">
+                @if ($user?->canAccessSidebar('logs.security') || $user?->canAccessSidebar('logs.audit') || $user?->canManageUsers())
+                <li class="nav-item nav-item-group {{ request()->routeIs('logs.index') || request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') || request()->routeIs('logs.recovery.*') || request()->routeIs('logs.deleted-users.*') ? 'open' : '' }}">
+                    <button class="nav-link nav-link-group-toggle {{ request()->routeIs('logs.index') || request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') || request()->routeIs('logs.recovery.*') || request()->routeIs('logs.deleted-users.*') ? 'active' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#desktopLogsMenu" aria-expanded="{{ request()->routeIs('logs.index') || request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') || request()->routeIs('logs.recovery.*') || request()->routeIs('logs.deleted-users.*') ? 'true' : 'false' }}" aria-controls="desktopLogsMenu">
                         <span class="nav-link-icon"><i class="fa-solid fa-clipboard-list app-icon"></i></span>
                         <span class="nav-link-text">Logs</span>
                         <i class="fa-solid fa-chevron-right app-icon nav-link-arrow"></i>
                     </button>
-                    <div class="collapse {{ request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') ? 'show' : '' }}" id="desktopLogsMenu" data-bs-parent="#desktopSidebarAccordion">
+                    <div class="collapse {{ request()->routeIs('logs.index') || request()->routeIs('logs.security.*') || request()->routeIs('logs.audit.*') || request()->routeIs('logs.recovery.*') || request()->routeIs('logs.deleted-users.*') ? 'show' : '' }}" id="desktopLogsMenu" data-bs-parent="#desktopSidebarAccordion">
                         <div class="app-sidebar-submenu">
+                            @if ($user?->canViewSecurityLogs())
                                 <a class="app-sidebar-sublink {{ request()->routeIs('logs.security.*') ? 'active' : '' }}" href="{{ route('logs.security.index') }}"><i class="fa-solid fa-shield-halved app-icon"></i> <span class="nav-link-text">Security Logs</span></a>
-                                @if ($user?->canAccessSidebar('logs.audit'))
-                                    <a class="app-sidebar-sublink {{ request()->routeIs('logs.audit.*') ? 'active' : '' }}" href="{{ route('logs.audit.index') }}"><i class="fa-solid fa-clipboard-list app-icon"></i> <span class="nav-link-text">Audit Logs</span></a>
-                                @endif
-                            </div>
+                            @endif
+                            @if ($user?->canAccessSidebar('logs.audit'))
+                                <a class="app-sidebar-sublink {{ request()->routeIs('logs.audit.*') ? 'active' : '' }}" href="{{ route('logs.audit.index') }}"><i class="fa-solid fa-clipboard-list app-icon"></i> <span class="nav-link-text">Audit Logs</span></a>
+                            @endif
+                            @if ($user?->canManageUsers())
+                                <a class="app-sidebar-sublink {{ request()->routeIs('logs.recovery.*') || request()->routeIs('logs.deleted-users.*') ? 'active' : '' }}" href="{{ route('logs.recovery.index') }}"><i class="fa-solid fa-rotate-left app-icon"></i> <span class="nav-link-text">Recovery</span></a>
+                            @endif
                         </div>
-                    </li>
+                    </div>
+                </li>
                 @endif
                 @if ($user?->canAccessSidebar('settings.profile') || $user?->canAccessSidebar('settings.captcha') || $user?->canAccessSidebar('settings.users') || $user?->canAccessSidebar('settings.roles') || $user?->canAccessSidebar('settings.divisions') || $user?->canAccessSidebar('settings.districts') || $user?->canAccessSidebar('settings.departments'))
                 <li class="nav-item nav-item-group {{ request()->routeIs('users.*') || request()->routeIs('settings.profile.*') || request()->routeIs('settings.captcha.*') || request()->routeIs('settings.divisions.*') || request()->routeIs('settings.districts.*') || request()->routeIs('settings.departments.*') || request()->routeIs('settings.roles.*') ? 'open' : '' }}">

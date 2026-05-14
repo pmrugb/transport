@@ -15,6 +15,7 @@ use App\Http\Controllers\GrantController;
 use App\Http\Controllers\GrantReleaseController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\RootRedirectController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SecurityLogController;
@@ -165,9 +166,30 @@ Route::middleware('auth')->group(function (): void {
     Route::put('/settings/roles/{role}/details', [RoleController::class, 'updateDetails'])->name('settings.roles.details.update');
     Route::put('/settings/roles/{role}/access', [RoleController::class, 'updateAccess'])->name('settings.roles.access.update');
     Route::delete('/settings/roles/{role}', [RoleController::class, 'destroy'])->name('settings.roles.destroy');
+    Route::get('/logs', function () {
+        $user = auth()->user();
+
+        if ($user?->canManageUsers()) {
+            return redirect()->route('logs.recovery.index');
+        }
+
+        if ($user?->canViewSecurityLogs()) {
+            return redirect()->route('logs.security.index');
+        }
+
+        if ($user?->canViewAuditLogs()) {
+            return redirect()->route('logs.audit.index');
+        }
+
+        abort(403);
+    })->name('logs.index');
     Route::get('/logs/security-logs', [SecurityLogController::class, 'index'])->name('logs.security.index');
     Route::delete('/logs/security-logs/months', [SecurityLogController::class, 'deleteMonthsLogs'])->name('logs.security.delete-months');
     Route::get('/logs/audit-logs', [AuditLogController::class, 'index'])->name('logs.audit.index');
     Route::delete('/logs/audit-logs/months', [AuditLogController::class, 'deleteMonthsLogs'])->name('logs.audit.delete-months');
+    Route::get('/logs/recovery', [RecoveryController::class, 'index'])->name('logs.recovery.index');
+    Route::delete('/logs/recovery/months', [RecoveryController::class, 'deleteMonthsLogs'])->name('logs.recovery.delete-months');
+    Route::put('/logs/recovery/{type}/{id}/restore', [RecoveryController::class, 'restore'])->name('logs.recovery.restore');
+    Route::redirect('/logs/deleted-users', '/logs/recovery')->name('logs.deleted-users.index');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 });

@@ -44,14 +44,14 @@ class StoreUserRequest extends FormRequest
             'district_id' => [Rule::requiredIf($accessScope === 'district'), 'nullable', 'integer', 'exists:districts,id'],
             'division_id' => [Rule::requiredIf($accessScope === 'division'), 'nullable', 'integer', 'exists:divisions,id'],
             'route_ids' => [
-                Rule::excludeIf($this->boolean('all_routes_access')),
+                Rule::excludeIf($accessScope !== 'route' || $this->boolean('all_routes_access')),
                 Rule::requiredIf($accessScope === 'route' && ! $this->boolean('all_routes_access')),
                 'nullable',
                 'array',
                 'min:1',
             ],
             'route_ids.*' => [
-                Rule::excludeIf($this->boolean('all_routes_access')),
+                Rule::excludeIf($accessScope !== 'route' || $this->boolean('all_routes_access')),
                 'integer',
                 'distinct',
                 'exists:transport_routes,id',

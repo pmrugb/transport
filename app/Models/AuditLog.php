@@ -35,6 +35,9 @@ class AuditLog extends Model
         'role.details_updated' => 'Role Details Updated',
         'role.access_updated' => 'Role Access Updated',
         'role.deleted' => 'Role Deleted',
+        'recovery.restored' => 'Recovery Restore',
+        'user.deleted' => 'User Deleted',
+        'user.restored' => 'User Restored',
         'trip.updated' => 'Trip Updated',
         'trip.deleted' => 'Trip Deleted',
     ];
@@ -171,6 +174,7 @@ class AuditLog extends Model
             $subject instanceof Role => $subject->name,
             $subject instanceof TripCost => 'Payment #'.$subject->id,
             $subject instanceof TripDetail => 'Trip #'.$subject->id,
+            $subject instanceof User => $subject->name,
             default => class_basename($subject).' #'.$subject->getKey(),
         };
     }
