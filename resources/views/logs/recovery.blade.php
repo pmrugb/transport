@@ -355,69 +355,6 @@
             color: #718096;
         }
 
-        .recovery-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            flex-wrap: wrap;
-            padding: 1.2rem 1.5rem 1.35rem;
-            border-top: 1px solid #ebf0f5;
-            background: #fff;
-        }
-
-        .recovery-footer-copy {
-            color: #70809a;
-            font-size: 0.92rem;
-        }
-
-        .recovery-footer-per-page {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.8rem;
-            color: #3b4a62;
-            font-size: 0.92rem;
-        }
-
-        .recovery-footer-per-page .form-select {
-            min-width: 118px;
-            min-height: 48px;
-            border-radius: 1rem;
-            border-color: #dbe4ec;
-            box-shadow: none;
-            font-size: 0.92rem;
-        }
-
-        .recovery-footer .pagination {
-            margin-bottom: 0;
-            gap: 0.55rem;
-        }
-
-        .recovery-footer .page-item .page-link {
-            min-width: 48px;
-            height: 48px;
-            border-radius: 1rem;
-            border: 1px solid #dbe4ec;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #53637b;
-            font-weight: 700;
-            box-shadow: none;
-        }
-
-        .recovery-footer .page-item.active .page-link {
-            border-color: #22553b;
-            background: #2d6948;
-            color: #fff;
-        }
-
-        .recovery-footer .page-item.disabled .page-link {
-            border-color: #d7dee8;
-            background: #d7dee8;
-            color: #8d9ab0;
-        }
-
         @media (max-width: 991.98px) {
             .recovery-page .page-hero {
                 margin-top: -1rem;
@@ -432,14 +369,9 @@
             .recovery-filter-card .card-header,
             .recovery-filter-card .card-body,
             .recovery-table-card .card-header,
-            .recovery-table-card .card-body,
-            .recovery-footer {
+            .recovery-table-card .card-body {
                 padding-left: 1rem;
                 padding-right: 1rem;
-            }
-
-            .recovery-footer {
-                justify-content: center;
             }
 
             .recovery-compare-grid {
@@ -689,26 +621,7 @@
                     </table>
                 </div>
             </div>
-            @if ($recoveryItems->hasPages())
-                <div class="recovery-footer">
-                    <div class="recovery-footer-copy">
-                        Showing {{ $recoveryItems->firstItem() }} to {{ $recoveryItems->lastItem() }} of {{ $recoveryItems->total() }} entries
-                    </div>
-                    <form method="get" action="{{ route('logs.recovery.index') }}" class="recovery-footer-per-page">
-                        <input type="hidden" name="search" value="{{ $search }}">
-                        <input type="hidden" name="type" value="{{ $type }}">
-                        <input type="hidden" name="from_date" value="{{ $fromDate }}">
-                        <input type="hidden" name="to_date" value="{{ $toDate }}">
-                        <select class="form-select" name="per_page" onchange="this.form.submit()">
-                            @foreach ([10, 25, 50, 100, 'all'] as $option)
-                                <option value="{{ $option }}" @selected((string) $perPage === (string) $option)>{{ $option === 'all' ? 'All' : $option }}</option>
-                            @endforeach
-                        </select>
-                        <span>per page</span>
-                    </form>
-                    <div>{{ $recoveryItems->links() }}</div>
-                </div>
-            @endif
+            @include('settings.partials.pagination', ['paginator' => $recoveryItems, 'perPage' => $perPage])
         </section>
 
         <div class="modal fade recovery-compare-modal" id="recoveryCompareModal" tabindex="-1" aria-labelledby="recoveryCompareModalLabel" aria-hidden="true">
